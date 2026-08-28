@@ -5,6 +5,10 @@
 [![Agent-ready JSON](https://img.shields.io/badge/output-agent--ready%20JSON-4B8BBE)](#for-agents)
 [![GitHub stars](https://img.shields.io/github/stars/rafaelpierre/kestrelsearch?style=flat)](https://github.com/rafaelpierre/kestrelsearch/stargazers)
 
+<p align="center">
+  <img src="static/logo.png" alt="Kestrel Search logo" width="360">
+</p>
+
 Kestrel Search turns a web query into a small set of readable, relevant pages. It searches DuckDuckGo, fetches result pages concurrently, extracts their main text, and re-ranks the results with BM25. The command line stays pipe-friendly: data goes to stdout and progress goes to stderr.
 
 It is useful when search snippets are not enough and an agent or script needs page content it can work with.

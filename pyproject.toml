@@ -25,11 +25,22 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/kestrelsearch"]
 
+[tool.semantic_release]
+branch = "main"
+build_command = "uv lock --upgrade-package kestrelsearch && uv build"
+major_on_zero = false
+tag_format = "v{version}"
+version_toml = ["pyproject.toml:project.version"]
+
+[tool.semantic_release.publish]
+upload_to_vcs_release = false
+
 [dependency-groups]
 dev = [
     "complexipy>=7.0.1",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
+    "python-semantic-release>=10.6.1",
     "ruff>=0.16.5",
     "ty>=0.0.75",
 ]
