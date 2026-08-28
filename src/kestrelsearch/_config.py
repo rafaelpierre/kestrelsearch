@@ -1,11 +1,11 @@
-"""Manages ~/.duckduckscrape/config.toml — tracks skill installation paths."""
+"""Manages ~/.kestrelsearch/config.toml — tracks skill installation paths."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import tomlkit
 
-CONFIG_PATH = Path.home() / ".duckduckscrape" / "config.toml"
+CONFIG_PATH = Path.home() / ".kestrelsearch" / "config.toml"
 
 
 def _load() -> tomlkit.TOMLDocument:

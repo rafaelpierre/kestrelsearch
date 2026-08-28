@@ -1,7 +1,7 @@
 """Dynamically generates SKILL.md from the live Click command tree.
 
 The SKILL.md follows the Agent Skills open standard (agentskills.io) and works
-for both Claude Code and GitHub Copilot in VS Code.
+with Claude Code, Codex, and GitHub Copilot in VS Code.
 
 Call `generate_skill_md(main)` — where `main` is the root Click group — to get
 an up-to-date SKILL.md that always reflects the current CLI options.
@@ -19,7 +19,7 @@ from jinja2 import Environment, StrictUndefined
 # ---------------------------------------------------------------------------
 _SKILL_TEMPLATE = """\
 ---
-name: duckduckscrape
+name: kestrelsearch
 description: >
   Lightweight web search via DuckDuckGo with BM25 relevance ranking.
   Use when asked to search the web, look something up, find recent information,
@@ -29,7 +29,7 @@ description: >
 argument-hint: "<search query>"
 ---
 
-# DuckDuckScrape
+# Kestrel Search
 
 {{ main_help }}
 
@@ -37,10 +37,10 @@ argument-hint: "<search query>"
 
 ```bash
 # Install system-wide with uv (recommended)
-uv tool install duckduckscrape
+uv tool install kestrelsearch
 
 # Or with pip
-pip install duckduckscrape
+pip install kestrelsearch
 ```
 
 {% for name, cmd in commands.items() %}
@@ -78,8 +78,9 @@ Each element in the returned array contains:
 
 ## Notes
 
+- This `SKILL.md` is compatible with Claude Code, Codex, and GitHub Copilot in VS Code.
 - Progress logs go to **stderr**; clean JSON goes to **stdout**.
-  Pipe stdout for programmatic use: `duckduckscrape search "..." --output json 2>/dev/null`
+  Pipe stdout for programmatic use: `kestrelsearch search "..." --output json 2>/dev/null`
 - PDFs are automatically skipped during content fetching.
 - BM25 filtering removes results with zero relevance to the query.
 - Use `--no-fetch` for a fast, low-cost keyword search without content extraction.

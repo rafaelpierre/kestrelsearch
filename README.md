@@ -1,114 +1,125 @@
-# duckduckscrape
+# Kestrel Search
 
-Lightweight DuckDuckGo web search for AI agents. Fetches results concurrently, extracts clean page content, and re-ranks by relevance using BM25 — all from the command line.
+[![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Search source: DuckDuckGo HTML](https://img.shields.io/badge/search-DuckDuckGo%20HTML-DE5833)](https://html.duckduckgo.com/html/)
+[![Agent-ready JSON](https://img.shields.io/badge/output-agent--ready%20JSON-4B8BBE)](#for-agents)
+[![GitHub stars](https://img.shields.io/github/stars/rafaelpierre/kestrelsearch?style=flat)](https://github.com/rafaelpierre/kestrelsearch/stargazers)
 
-## Features
+Kestrel Search turns a web query into a small set of readable, relevant pages. It searches DuckDuckGo, fetches result pages concurrently, extracts their main text, and re-ranks the results with BM25. The command line stays pipe-friendly: data goes to stdout and progress goes to stderr.
 
-- **DuckDuckGo search** — scrapes `html.duckduckgo.com` with region and recency filters
-- **Concurrent page fetching** — async HTTP/2 with connection pooling; configurable concurrency
-- **Intelligent content extraction** — removes navigation, ads, and boilerplate; weights headings and body text using SEO heuristics; deduplicates lines
-- **BM25 re-ranking** — indexes full page text and re-ranks results by relevance to the original query
-- **Agent-friendly output** — clean JSON on stdout, progress logs on stderr; pipe-safe for agent tool calls
-- **Skill management** — installs a `SKILL.md` for Claude Code and GitHub Copilot in VS Code so agents discover and invoke the tool automatically; tracks installations and supports clean uninstall
+It is useful when search snippets are not enough and an agent or script needs page content it can work with.
 
-## Installation
+> **Note** Kestrel Search is an independent project and is not affiliated with DuckDuckGo.
+
+## Install
+
+Requires Python 3.13 or later.
 
 ```bash
-# System-wide with uv (recommended)
-uv tool install duckduckscrape
+# With uv
+uv tool install kestrelsearch
 
 # Or with pip
-pip install duckduckscrape
+pip install kestrelsearch
 ```
 
-## Usage
+## Quick start
 
 ```bash
-# Basic search — top 5 results ranked by BM25
-duckduckscrape search "python dataclasses"
+# Search, fetch the matching pages, and rank them by relevance
+kestrelsearch search "python dataclasses"
 
-# Clean JSON for agent/programmatic use (progress on stderr)
-duckduckscrape search "rust ownership" --output json
+# Send structured results to another program or agent
+kestrelsearch search "rust ownership" --output json
 
-# Limit results
-duckduckscrape search "climate change" -k 3
-
-# Skip full-page fetching for a fast keyword-only search
-duckduckscrape search "openai news" --no-fetch
-
-# Filter by recency: d (day), w (week), m (month), y (year)
-duckduckscrape search "breaking news" --time-filter d
-
-# Filter by region
-duckduckscrape search "local elections" --region us-en
-
-# Tune performance
-duckduckscrape search "machine learning" --concurrency 8 --timeout 15 --content-limit 3000
+# A fast snippet-only search, without fetching pages
+kestrelsearch search "openai news" --no-fetch
 ```
 
-### Output format
+## What it does
 
-Each result in `--output json` is an object:
+- Searches DuckDuckGo’s HTML endpoint, with optional region and recency filters.
+- Fetches result pages concurrently over HTTP/2.
+- Removes common page chrome and extracts headings, paragraphs, and list content.
+- Re-ranks fetched results against the original query using BM25.
+- Returns readable terminal output or clean JSON.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `title` | string | Page title |
-| `url` | string | Full URL |
-| `display_url` | string | Shortened display URL |
-| `snippet` | string | DuckDuckGo snippet |
-| `content` | string \| null | Extracted page text prefixed with `Source: <url>` |
-| `bm25_score` | number | BM25 relevance score (omitted when `--no-rank`) |
+## For agents
 
-## Agent skill
-
-duckduckscrape can install a `SKILL.md` so that Claude Code and GitHub Copilot in VS Code automatically know when and how to invoke it.
+Use JSON output when Kestrel Search is called from an agent, script, or pipeline. Progress messages are written to stderr, leaving stdout safe to parse.
 
 ```bash
-# Install (prompts for agent and scope)
-duckduckscrape skill install
-
-# Install non-interactively
-duckduckscrape skill install --agent both --scope global
-
-# Uninstall (interactive, reads from ~/.duckduckscrape/config.toml)
-duckduckscrape skill uninstall
+kestrelsearch search "recent Python packaging changes" \
+  --time-filter m \
+  --top-k 3 \
+  --output json > results.json
 ```
 
-Installation paths are recorded in `~/.duckduckscrape/config.toml`. The `uninstall` command reads this file to present a selection dialogue — no manual path hunting required.
+Each result contains the search metadata plus extracted content when fetching is enabled:
 
-### Skill locations
+| Field | Description |
+| --- | --- |
+| `title` | Result title |
+| `url` | Result URL |
+| `display_url` | Shortened URL shown in the search result |
+| `snippet` | Search-result snippet |
+| `content` | Extracted page text, prefixed with its source URL; `null` if unavailable |
+| `bm25_score` | Relevance score when ranking is enabled |
 
-| Agent | Scope | Path |
-|-------|-------|------|
-| Claude Code | project | `.claude/skills/duckduckscrape/SKILL.md` |
-| Claude Code | global | `~/.claude/skills/duckduckscrape/SKILL.md` |
-| VS Code Copilot | project | `.github/skills/duckduckscrape/SKILL.md` |
-| VS Code Copilot | global | `~/.copilot/skills/duckduckscrape/SKILL.md` |
+To make the command discoverable to supported coding agents, install its generated `SKILL.md`:
 
-`~/.claude/skills/` is recognised by both Claude Code and VS Code Copilot, so a single global Claude install covers both agents.
+```bash
+# Prompts for the agent and whether to install locally or globally
+kestrelsearch skill install
 
-The `SKILL.md` is generated dynamically from the live CLI — options, defaults, and examples stay in sync with the installed version automatically.
+# Or install for every supported agent without prompts
+kestrelsearch skill install --agent all --scope global
+```
 
-## Use cases
+It supports Claude Code, Codex, and GitHub Copilot in VS Code. Use `--agent claude`, `--agent codex`, or `--agent vscode` to target one agent; `--agent both` remains available for Claude Code and VS Code Copilot. Installed skill locations are tracked locally, so `kestrelsearch skill uninstall` can remove them later.
 
-- **Agent web search** — drop into any Claude Code or Copilot workflow; the agent calls `duckduckscrape search "..." --output json` and gets structured, ranked results it can reason over
-- **Research pipelines** — pipe JSON output into `jq`, Python scripts, or other tools for further processing
-- **Content monitoring** — combine `--time-filter d` with cron to watch a topic for recent developments
-- **Fast keyword lookup** — `--no-fetch` returns DDG snippets in under a second, useful when full content isn't needed
+| Agent | Project install | Global install |
+| --- | --- | --- |
+| Claude Code | `.claude/skills/kestrelsearch/SKILL.md` | `~/.claude/skills/kestrelsearch/SKILL.md` |
+| Codex | `.codex/skills/kestrelsearch/SKILL.md` | `~/.codex/skills/kestrelsearch/SKILL.md` |
+| GitHub Copilot in VS Code | `.github/skills/kestrelsearch/SKILL.md` | `~/.copilot/skills/kestrelsearch/SKILL.md` |
+
+## Useful options
+
+```bash
+# Return three results
+kestrelsearch search "climate change" --top-k 3
+
+# Limit results to the past day; use d, w, m, or y
+kestrelsearch search "breaking news" --time-filter d
+
+# Narrow the DuckDuckGo region
+kestrelsearch search "local elections" --region us-en
+
+# Tune fetching for a pipeline
+kestrelsearch search "machine learning" \
+  --concurrency 8 --timeout 15 --content-limit 3000
+
+# Keep DuckDuckGo ordering rather than applying BM25 ranking
+kestrelsearch search "python typing" --no-rank
+```
+
+Run `kestrelsearch search --help` for the complete CLI reference.
 
 ## How it works
 
-1. POST to `https://html.duckduckgo.com/html/` and parse `div.result` elements with BeautifulSoup + lxml
-2. Fetch each result URL concurrently with a shared `httpx.AsyncClient` (HTTP/2, bounded semaphore)
-3. Extract main content: strip nav/header/footer/ads, narrow to `<main>`/`<article>`, weight headings, deduplicate lines
-4. Build a `BM25Okapi` index over fetched content and re-rank; discard zero-score results
-5. Return top-k results as JSON
+1. Kestrel Search submits the query to DuckDuckGo’s HTML endpoint and parses the result list.
+2. Unless `--no-fetch` is used, it fetches eligible result pages concurrently.
+3. It strips common boilerplate, focuses on likely main content, and keeps meaningful headings and body text.
+4. BM25 scores the extracted text against the original query and returns the best matches.
+
+PDFs are skipped during page fetching. If fetching or extraction fails for a result, the result is retained with `content: null`; BM25 ranking may omit zero-relevance results.
 
 ## Development
 
 ```bash
-git clone https://github.com/your-username/duckduckscrape
-cd duckduckscrape
+git clone https://github.com/rafaelpierre/kestrelsearch
+cd kestrelsearch
 uv sync
-uv run duckduckscrape search "test"
+uv run kestrelsearch search "test"
 ```

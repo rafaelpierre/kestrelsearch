@@ -1,7 +1,7 @@
 [project]
-name = "duckduckscrape"
+name = "kestrelsearch"
 version = "0.1.0"
-description = "Lightweight DuckDuckGo web search tool for AI agents"
+description = "Web search, page extraction, and relevance ranking for AI agents"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -16,11 +16,11 @@ dependencies = [
 ]
 
 [project.scripts]
-duckduckscrape = "duckduckscrape.cli:main"
+kestrelsearch = "kestrelsearch.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/duckduckscrape"]
+packages = ["src/kestrelsearch"]

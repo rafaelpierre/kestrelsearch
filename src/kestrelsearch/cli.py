@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -12,22 +11,25 @@ from .fetcher import fetch_all
 from .ranking import rank_results
 from .search import search
 
-_SKILL_NAME = "duckduckscrape"
+_SKILL_NAME = "kestrelsearch"
 
 # Paths where each agent looks for skills
 _PROJECT_PATHS = {
     "claude":  Path(".claude/skills"),
     "vscode":  Path(".github/skills"),
+    "codex":   Path(".codex/skills"),
 }
 _GLOBAL_PATHS = {
     "claude":  Path.home() / ".claude" / "skills",
     "vscode":  Path.home() / ".copilot" / "skills",
+    "codex":   Path.home() / ".codex" / "skills",
 }
+_AGENT_CHOICES = ["claude", "vscode", "codex", "all", "both"]
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 def main():
-    """duckduckscrape — Lightweight DuckDuckGo web search for AI agents."""
+    """Kestrel Search — web search, page extraction, and relevance ranking for AI agents."""
 
 
 @main.command("search")
@@ -57,25 +59,25 @@ def search_cmd(query, top_k, fetch, rank, region, time_filter, content_limit, ti
 
     \b
     Examples:
-      duckduckscrape search "python async patterns" -k 3
-      duckduckscrape search "rust ownership" --no-fetch --output json
-      duckduckscrape search "climate news" --time-filter w --region us-en
-      duckduckscrape search "react hooks" --content-limit 1000 --timeout 5
+      kestrelsearch search "python async patterns" -k 3
+      kestrelsearch search "rust ownership" --no-fetch --output json
+      kestrelsearch search "climate news" --time-filter w --region us-en
+      kestrelsearch search "react hooks" --content-limit 1000 --timeout 5
     """
-    click.echo(f"[duckduckscrape] Searching: '{query}'", err=True)
+    click.echo(f"[kestrelsearch] Searching: '{query}'", err=True)
 
     try:
         results = search(query, region=region, time_filter=time_filter)
     except Exception as exc:
-        click.echo(f"[duckduckscrape] Search failed: {exc}", err=True)
+        click.echo(f"[kestrelsearch] Search failed: {exc}", err=True)
         sys.exit(1)
 
     if not results:
-        click.echo("[duckduckscrape] No results found.", err=True)
+        click.echo("[kestrelsearch] No results found.", err=True)
         click.echo("[]" if output == "json" else "No results found.")
         sys.exit(0)
 
-    click.echo(f"[duckduckscrape] Got {len(results)} results.", err=True)
+    click.echo(f"[kestrelsearch] Got {len(results)} results.", err=True)
 
     if fetch:
         fetchable = [
@@ -83,7 +85,7 @@ def search_cmd(query, top_k, fetch, rank, region, time_filter, content_limit, ti
             if ".pdf" not in r["url"].lower()
         ]
         click.echo(
-            f"[duckduckscrape] Fetching {len(fetchable)} pages "
+            f"[kestrelsearch] Fetching {len(fetchable)} pages "
             f"(concurrency={concurrency})...",
             err=True,
         )
@@ -103,16 +105,16 @@ def search_cmd(query, top_k, fetch, rank, region, time_filter, content_limit, ti
 
         fetched_count = sum(1 for _, c in zip(fetchable, fetched) if c)
         click.echo(
-            f"[duckduckscrape] Successfully fetched {fetched_count}/{len(fetchable)} pages.",
+            f"[kestrelsearch] Successfully fetched {fetched_count}/{len(fetchable)} pages.",
             err=True,
         )
 
     if fetch and rank:
-        click.echo("[duckduckscrape] Ranking with BM25...", err=True)
+        click.echo("[kestrelsearch] Ranking with BM25...", err=True)
         results = rank_results(results, query)
 
     top_results = results[:top_k]
-    click.echo(f"[duckduckscrape] Returning top {len(top_results)} results.", err=True)
+    click.echo(f"[kestrelsearch] Returning top {len(top_results)} results.", err=True)
 
     if output == "json":
         click.echo(json.dumps(top_results, ensure_ascii=False, indent=2))
@@ -134,13 +136,13 @@ def search_cmd(query, top_k, fetch, rank, region, time_filter, content_limit, ti
 
 @main.group("skill", context_settings={"help_option_names": ["-h", "--help"]})
 def skill_group():
-    """Manage the duckduckscrape agent skill (SKILL.md)."""
+    """Manage the kestrelsearch agent skill (SKILL.md)."""
 
 
 @skill_group.command("install")
 @click.option(
     "--agent",
-    type=click.Choice(["claude", "vscode", "both"], case_sensitive=False),
+    type=click.Choice(_AGENT_CHOICES, case_sensitive=False),
     default=None,
     help="Target agent. If omitted, you will be prompted.",
 )
@@ -153,26 +155,31 @@ def skill_group():
 @click.option("--force", is_flag=True, default=False,
               help="Overwrite an existing SKILL.md without prompting.")
 def skill_install(agent, scope, force):
-    """Install the duckduckscrape SKILL.md for Claude Code and/or VS Code Copilot.
+    """Install the kestrelsearch SKILL.md for Claude Code, Codex, and/or VS Code Copilot.
 
     \b
     Skill locations
-      Claude Code  project : .claude/skills/duckduckscrape/SKILL.md
-      Claude Code  global  : ~/.claude/skills/duckduckscrape/SKILL.md
-      VS Code      project : .github/skills/duckduckscrape/SKILL.md
-      VS Code      global  : ~/.copilot/skills/duckduckscrape/SKILL.md
+      Claude Code  project : .claude/skills/kestrelsearch/SKILL.md
+      Claude Code  global  : ~/.claude/skills/kestrelsearch/SKILL.md
+      VS Code      project : .github/skills/kestrelsearch/SKILL.md
+      VS Code      global  : ~/.copilot/skills/kestrelsearch/SKILL.md
+      Codex        project : .codex/skills/kestrelsearch/SKILL.md
+      Codex        global  : ~/.codex/skills/kestrelsearch/SKILL.md
 
     ~/.claude/skills/ is recognised by both Claude Code and VS Code Copilot,
     so installing for Claude Code also activates the skill in VS Code.
 
-    Installation paths are recorded in ~/.duckduckscrape/config.toml so that
-    `duckduckscrape skill uninstall` can find and remove them later.
+    Use --agent all to install for every supported agent. The legacy --agent both
+    option continues to install for Claude Code and VS Code Copilot.
+
+    Installation paths are recorded in ~/.kestrelsearch/config.toml so that
+    `kestrelsearch skill uninstall` can find and remove them later.
     """
     if agent is None:
         agent = click.prompt(
             "Which agent?",
-            type=click.Choice(["claude", "vscode", "both"], case_sensitive=False),
-            default="both",
+            type=click.Choice(_AGENT_CHOICES, case_sensitive=False),
+            default="all",
         )
 
     if scope is None:
@@ -182,7 +189,11 @@ def skill_install(agent, scope, force):
             default="project",
         )
 
-    agents = ["claude", "vscode"] if agent == "both" else [agent]
+    agent_groups = {
+        "both": ["claude", "vscode"],
+        "all": ["claude", "vscode", "codex"],
+    }
+    agents = agent_groups.get(agent, [agent])
 
     targets: list[Path] = []
     for ag in agents:
@@ -223,7 +234,7 @@ def skill_install(agent, scope, force):
 def skill_uninstall():
     """Remove previously installed SKILL.md files.
 
-    Reads installation paths from ~/.duckduckscrape/config.toml and presents
+    Reads installation paths from ~/.kestrelsearch/config.toml and presents
     an interactive selection dialogue.
     """
     installations = get_installations()
@@ -282,7 +293,7 @@ def skill_uninstall():
     for target in selected:
         try:
             target.unlink()
-            # Remove empty parent dir (the duckduckscrape/ skills folder)
+            # Remove empty parent dir (the kestrelsearch/ skills folder)
             try:
                 target.parent.rmdir()
             except OSError:
@@ -293,5 +304,3 @@ def skill_uninstall():
             click.echo(f"  Failed to remove {target}: {exc}")
 
     click.echo("\nDone. Restart your agent session for changes to take effect.")
-
-
