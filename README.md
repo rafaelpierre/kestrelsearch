@@ -1,17 +1,12 @@
 # Kestrel Search
 
-[![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Search source: DuckDuckGo HTML](https://img.shields.io/badge/search-DuckDuckGo%20HTML-DE5833)](https://html.duckduckgo.com/html/)
-[![Agent-ready JSON](https://img.shields.io/badge/output-agent--ready%20JSON-4B8BBE)](#for-agents)
-[![GitHub stars](https://img.shields.io/github/stars/rafaelpierre/kestrelsearch?style=flat)](https://github.com/rafaelpierre/kestrelsearch/stargazers)
-
 <p align="center">
   <img src="static/logo.png" alt="Kestrel Search logo" width="360">
 </p>
 
-Kestrel Search turns a web query into a small set of readable, relevant pages. It searches DuckDuckGo, fetches result pages concurrently, extracts their main text, and re-ranks the results with BM25. The command line stays pipe-friendly: data goes to stdout and progress goes to stderr.
+Kestrel Search is a local web-search capability for coding assistants. Install it once, let your assistant discover its generated `SKILL.md`, and it can search the web, retrieve readable page content, and return focused results while you stay in your coding workflow.
 
-It is useful when search snippets are not enough and an agent or script needs page content it can work with.
+Under the hood, it searches DuckDuckGo, fetches result pages concurrently, extracts their main text, and re-ranks the results with BM25. The command line stays pipe-friendly: data goes to stdout and progress goes to stderr.
 
 > **Note** Kestrel Search is an independent project and is not affiliated with DuckDuckGo.
 
