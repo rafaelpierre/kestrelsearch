@@ -222,13 +222,6 @@
     .pass-dot.off { color: #cbd0ca; background: transparent; }
     .score { color: var(--muted); font-size: 13px; }
 
-    .findings { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
-    .finding { padding: 22px 24px; border-left: 4px solid; background: rgba(255,255,255,.5); }
-    .finding.native { border-color: var(--native); }
-    .finding.kestrel { border-color: var(--kestrel); }
-    .finding h3 { margin-bottom: 7px; font-size: 15px; }
-    .finding p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
-
     details.raw-card { padding: 0; }
     details summary { padding: 24px 26px; cursor: pointer; font-weight: 800; list-style: none; }
     details summary::-webkit-details-marker { display: none; }
@@ -279,7 +272,7 @@
       .hero { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 42px; }
       .hero > *, .section-head > * { min-width: 0; width: 100%; }
       .cards { grid-template-columns: 1fr 1fr; }
-      .plot-grid, .findings { grid-template-columns: 1fr; }
+      .plot-grid { grid-template-columns: 1fr; }
       .section-head { align-items: start; flex-direction: column; gap: 12px; }
     }
     @media (max-width: 580px) {
@@ -340,14 +333,7 @@
       <div class="cards" id="summary-cards"></div>
     </section>
 
-    <section class="section" id="distributions" aria-labelledby="distribution-title">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Every run, visible</p>
-          <h2 id="distribution-title">Look past the median.</h2>
-        </div>
-        <p>Each dot is one trial. The dark tick marks the median. Lower is better for both charts.</p>
-      </div>
+    <section class="section" id="distributions" aria-label="Trial distributions">
       <div class="plot-grid">
         <article class="plot-card">
           <h3 class="plot-title">End-to-end latency</h3>
@@ -362,25 +348,8 @@
       </div>
     </section>
 
-    <section class="section" id="task-quality" aria-labelledby="task-title">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Where results diverged</p>
-          <h2 id="task-title">Quality, task by task.</h2>
-        </div>
-        <p>Filled circles are semantic passes under the project’s 8-point correctness, grounding, source-quality, and completeness rubric.</p>
-      </div>
+    <section class="section" id="task-quality" aria-label="Semantic benchmark passes by task">
       <div class="task-card" id="task-matrix"></div>
-      <div class="findings">
-        <article class="finding native">
-          <h3>Native’s miss: source reconciliation</h3>
-          <p>Two runs called Python 3.15 the future development release. The current official devguide identifies 3.16 as the future main-branch release.</p>
-        </article>
-        <article class="finding kestrel">
-          <h3>Kestrel’s miss: PyPI publishing guidance</h3>
-          <p>Three runs gave the mandatory <code>id-token: write</code> permission instead of PyPI’s strongly recommended GitHub Environment setting.</p>
-        </article>
-      </div>
     </section>
 
     <section class="section" id="raw" aria-labelledby="raw-title">
