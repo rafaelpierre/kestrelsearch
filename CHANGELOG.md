@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.1.1 (2026-08-28)
+
+### Bug Fixes
+
+- Allow query-only search options
+  ([`0181bad`](https://github.com/rafaelpierre/kestrelsearch/commit/0181badd334132faeea27a65d4753a8ffa4280ee))
+
+### Documentation
+
+- Add Mintlify starter site
+  ([`7a563eb`](https://github.com/rafaelpierre/kestrelsearch/commit/7a563ebb23ce2e0de7b05d72896264e0f9f8ae44))
+
+
 ## v1.1.0 (2026-08-28)
 
 ### Chores
