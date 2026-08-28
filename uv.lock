@@ -1542,17 +1542,23 @@ dependencies = [
     { name = "jinja2" },
     { name = "lxml" },
     { name = "opentelemetry-api" },
-    { name = "opentelemetry-exporter-otlp-proto-grpc" },
-    { name = "opentelemetry-sdk" },
     { name = "rank-bm25" },
     { name = "tenacity" },
     { name = "tomlkit" },
+]
+
+[package.optional-dependencies]
+benchmark = [
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-sdk" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "arize-phoenix" },
     { name = "complexipy" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-sdk" },
     { name = "prek" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -1571,17 +1577,20 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1" },
     { name = "lxml", specifier = ">=6.0.2" },
     { name = "opentelemetry-api", specifier = ">=1.44.0" },
-    { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.44.0" },
-    { name = "opentelemetry-sdk", specifier = ">=1.44.0" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc", marker = "extra == 'benchmark'", specifier = ">=1.44.0" },
+    { name = "opentelemetry-sdk", marker = "extra == 'benchmark'", specifier = ">=1.44.0" },
     { name = "rank-bm25", specifier = ">=0.2.2" },
     { name = "tenacity", specifier = ">=9.1.2" },
     { name = "tomlkit", specifier = ">=0.13" },
 ]
+provides-extras = ["benchmark"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "arize-phoenix", specifier = ">=20.4.0" },
     { name = "complexipy", specifier = ">=7.0.1" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.44.0" },
+    { name = "opentelemetry-sdk", specifier = ">=1.44.0" },
     { name = "prek", specifier = ">=0.4.14" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
