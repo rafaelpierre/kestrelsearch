@@ -1,0 +1,40 @@
+---
+title: "Kestrel Search"
+description: "Local web search, page extraction, and relevance ranking for AI coding agents."
+---
+
+# Kestrel Search
+
+Kestrel Search gives coding assistants a local, keyless web-search capability.
+
+It searches DuckDuckGo, Bing, or Yahoo, retrieves readable page content, and
+re-ranks results with BM25. It works from the command line and provides
+structured JSON output for agents and scripts.
+
+## Why Kestrel Search?
+
+- No search API key required
+- DuckDuckGo, Bing, and Yahoo support
+- Concurrent search and page retrieval
+- Main-content extraction
+- BM25 relevance ranking
+- Clean JSON output for agents
+- Agent skill support for Codex, Claude Code, and GitHub Copilot
+
+## Quick example
+
+```bash
+kestrelsearch search "python dataclasses"
+```
+
+For structured results:
+
+```bash
+kestrelsearch search "python dataclasses" --output json
+```
+
+## Next steps
+
+- [Install Kestrel Search](/installation)
+- [Connect it to your coding agent](/guides/agent-integration)
+- [Explore search options](/guides/search-options)

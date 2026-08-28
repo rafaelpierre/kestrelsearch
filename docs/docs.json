@@ -1,0 +1,20 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Kestrel Search",
+  "colors": {
+    "primary": "#237DB5"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": ["index", "installation"]
+      },
+      {
+        "group": "Guides",
+        "pages": ["guides/agent-integration", "guides/search-options"]
+      }
+    ]
+  }
+}

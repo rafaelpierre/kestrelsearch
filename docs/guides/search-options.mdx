@@ -1,0 +1,76 @@
+---
+title: "Search options"
+description: "Control providers, ranking, retrieval, concurrency, and output."
+---
+
+# Search options
+
+## Choose a search engine
+
+Kestrel Search supports DuckDuckGo, Bing, and Yahoo.
+
+```bash
+kestrelsearch search "python typing" --engine bing
+```
+
+## Use fallback mode
+
+Try providers in order until one succeeds:
+
+```bash
+kestrelsearch search "python typing" \
+  --engine duckduckgo \
+  --engine bing \
+  --mode fallback
+```
+
+## Search providers concurrently
+
+```bash
+kestrelsearch search "python typing" \
+  --engine bing \
+  --engine yahoo \
+  --mode fanout
+```
+
+## Run multiple queries
+
+```bash
+kestrelsearch search "python typing" \
+  --query "pyright documentation" \
+  --mode fanout
+```
+
+## Return recent results
+
+Use `d`, `w`, `m`, or `y` for day, week, month, or year:
+
+```bash
+kestrelsearch search "Python news" --time-filter w
+```
+
+## Skip page retrieval
+
+For a faster snippet-only search:
+
+```bash
+kestrelsearch search "OpenAI news" --no-fetch
+```
+
+## Return JSON
+
+```bash
+kestrelsearch search "Rust ownership" --output json
+```
+
+## Control result count
+
+```bash
+kestrelsearch search "climate change" --top-k 3
+```
+
+Run the following command for the complete option reference:
+
+```bash
+kestrelsearch search --help
+```

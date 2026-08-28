@@ -1,0 +1,41 @@
+---
+title: "Installation"
+description: "Install Kestrel Search with uv or pip."
+---
+
+# Installation
+
+Kestrel Search requires Python 3.13 or later.
+
+## Install with uv
+
+```bash
+uv tool install kestrelsearch
+```
+
+## Install with pip
+
+```bash
+pip install kestrelsearch
+```
+
+## Verify the installation
+
+```bash
+kestrelsearch --help
+```
+
+Run your first search:
+
+```bash
+kestrelsearch search "python async patterns"
+```
+
+## Install from source
+
+```bash
+git clone https://github.com/rafaelpierre/kestrelsearch.git
+cd kestrelsearch
+uv sync
+uv run kestrelsearch search "test"
+```

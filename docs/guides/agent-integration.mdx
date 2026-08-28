@@ -1,0 +1,51 @@
+---
+title: "Agent integration"
+description: "Make Kestrel Search discoverable to Codex, Claude Code, and GitHub Copilot."
+---
+
+# Agent integration
+
+Kestrel Search can generate a `SKILL.md` that teaches supported coding agents
+when and how to use the command.
+
+## Interactive installation
+
+```bash
+kestrelsearch skill install
+```
+
+You will be prompted to choose an agent and whether the skill should be
+installed for the current project or globally.
+
+## Install for every supported agent
+
+```bash
+kestrelsearch skill install --agent all --scope global
+```
+
+Supported agents include:
+
+- Codex
+- Claude Code
+- GitHub Copilot in VS Code
+
+Restart the agent session after installing the skill.
+
+## Use Kestrel from an agent
+
+JSON is the recommended output format:
+
+```bash
+kestrelsearch search "recent Python packaging changes" \
+  --time-filter m \
+  --top-k 3 \
+  --output json
+```
+
+Progress is written to stderr, leaving stdout safe for parsing.
+
+## Remove installed skills
+
+```bash
+kestrelsearch skill uninstall
+```
