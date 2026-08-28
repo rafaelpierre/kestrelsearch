@@ -6,6 +6,7 @@ with Claude Code, Codex, and GitHub Copilot in VS Code.
 Call `generate_skill_md(main)` — where `main` is the root Click group — to get
 an up-to-date SKILL.md that always reflects the current CLI options.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -113,7 +114,9 @@ def _param_info(param: click.Option) -> dict[str, Any]:
     """Extract display metadata from a Click option for the options table."""
     display_name = "/".join(param.opts)
     default = "" if param.default is None else str(param.default)
-    choices = ", ".join(param.type.choices) if isinstance(param.type, click.Choice) else ""
+    choices = (
+        ", ".join(param.type.choices) if isinstance(param.type, click.Choice) else ""
+    )
     # Escape pipe characters so they don't break Markdown table cells
     help_text = (param.help or "").replace("|", "\\|")
     return {
@@ -130,7 +133,10 @@ def generate_skill_md(main_cmd: click.Group) -> str:
     Pass the root Click group (e.g. `main` from cli.py).  The returned string
     is always consistent with the current options, defaults, and docstrings.
     """
-    env = Environment(undefined=StrictUndefined, keep_trailing_newline=True)
+    env = Environment(  # noqa: S701 -- renders trusted Markdown, not HTML.
+        undefined=StrictUndefined,
+        keep_trailing_newline=True,
+    )
     template = env.from_string(_SKILL_TEMPLATE)
 
     commands: dict[str, Any] = {}

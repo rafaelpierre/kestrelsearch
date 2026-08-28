@@ -1,7 +1,9 @@
 """Manages ~/.kestrelsearch/config.toml — tracks skill installation paths."""
+
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import tomlkit
 
@@ -13,7 +15,8 @@ def _load() -> tomlkit.TOMLDocument:
         return tomlkit.parse(CONFIG_PATH.read_text(encoding="utf-8"))
     doc: tomlkit.TOMLDocument = tomlkit.document()
     doc.add("skill", tomlkit.table())
-    doc["skill"].add("installations", tomlkit.array())  # type: ignore[index]
+    skill_table: Any = doc["skill"]
+    skill_table.add("installations", tomlkit.array())
     return doc
 
 
@@ -25,7 +28,8 @@ def _save(doc: tomlkit.TOMLDocument) -> None:
 def get_installations() -> list[Path]:
     """Return all recorded skill installation paths."""
     doc = _load()
-    raw: list[str] = doc.get("skill", {}).get("installations", [])  # type: ignore[assignment]
+    skill_table = cast(dict[str, Any], doc.get("skill", {}))
+    raw = cast(list[str], skill_table.get("installations", []))
     return [Path(p) for p in raw]
 
 
@@ -34,10 +38,10 @@ def record_installation(path: Path) -> None:
     doc = _load()
     if "skill" not in doc:
         doc.add("skill", tomlkit.table())
-    skill_table = doc["skill"]  # type: ignore[index]
+    skill_table: Any = doc["skill"]
     if "installations" not in skill_table:
         skill_table.add("installations", tomlkit.array())
-    installations: list = skill_table["installations"]  # type: ignore[assignment]
+    installations: list[str] = skill_table["installations"]
     absolute = str(path.resolve())
     if absolute not in [str(Path(p).resolve()) for p in installations]:
         installations.append(absolute)
@@ -48,12 +52,13 @@ def remove_installation(path: Path) -> None:
     """Remove *path* from tracked installations."""
     doc = _load()
     try:
-        installations: list = doc["skill"]["installations"]  # type: ignore[index]
+        skill_table: Any = doc["skill"]
+        installations: list[str] = skill_table["installations"]
     except KeyError:
         return
     target = str(path.resolve())
     updated = [p for p in installations if str(Path(p).resolve()) != target]
-    doc["skill"]["installations"] = tomlkit.array()  # type: ignore[index]
+    skill_table["installations"] = tomlkit.array()
     for p in updated:
-        doc["skill"]["installations"].append(p)  # type: ignore[index]
+        skill_table["installations"].append(p)
     _save(doc)

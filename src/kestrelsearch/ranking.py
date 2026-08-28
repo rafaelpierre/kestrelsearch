@@ -27,7 +27,7 @@ def rank_results(results: list[dict], query: str) -> list[dict]:
     scores = bm25.get_scores(query_tokens)
 
     ranked = []
-    for result, score in zip(results, scores):
+    for result, score in zip(results, scores, strict=True):
         result["bm25_score"] = float(score)
         if score > 0:
             ranked.append(result)
