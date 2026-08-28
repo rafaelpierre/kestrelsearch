@@ -60,7 +60,9 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def load_tasks(path: Path, sample_size: int | None = None, seed: int = 42) -> list[dict[str, Any]]:
+def load_tasks(
+    path: Path, sample_size: int | None = None, seed: int = 42
+) -> list[dict[str, Any]]:
     if path.suffix == ".csv":
         rows = list(csv.DictReader(path.open(encoding="utf-8")))
         if sample_size is None:
@@ -74,7 +76,10 @@ def load_tasks(path: Path, sample_size: int | None = None, seed: int = 42) -> li
                 "search_query": row["problem"],
                 "prompt": row["problem"],
                 "tags": ["deepsearchqa", row["problem_category"]],
-                "expected": {"must_include": [part.strip() for part in row["answer"].split(",")], "reference_urls": []},
+                "expected": {
+                    "must_include": [part.strip() for part in row["answer"].split(",")],
+                    "reference_urls": [],
+                },
             }
             for row in selected
         ]
@@ -83,7 +88,9 @@ def load_tasks(path: Path, sample_size: int | None = None, seed: int = 42) -> li
         if not line.strip():
             continue
         task = json.loads(line)
-        if not isinstance(task.get("id"), str) or not isinstance(task.get("prompt"), str):
+        if not isinstance(task.get("id"), str) or not isinstance(
+            task.get("prompt"), str
+        ):
             msg = f"{path}:{line_number}: each task needs string id and prompt fields"
             raise ValueError(msg)
         tasks.append(task)
@@ -110,7 +117,9 @@ def benchmark_prompt(task: dict[str, Any], arm: str, payload: str = "") -> str:
     )
 
 
-def build_command(codex_command: str, task: dict[str, Any], arm: str, run_id: str, payload: str = "") -> list[str]:
+def build_command(
+    codex_command: str, task: dict[str, Any], arm: str, run_id: str, payload: str = ""
+) -> list[str]:
     attributes = {
         "service.name": "codex-kestrel-benchmark",
         "benchmark.project": "kestrelsearch",
@@ -154,7 +163,10 @@ def parse_codex_events(stdout: str) -> tuple[dict[str, int], str | None]:
         if event.get("type") == "turn.completed":
             usage = event.get("usage", {})
         item = event.get("item", {})
-        if event.get("type") == "item.completed" and item.get("type") == "agent_message":
+        if (
+            event.get("type") == "item.completed"
+            and item.get("type") == "agent_message"
+        ):
             answer = item.get("text")
     return usage, answer
 
@@ -166,10 +178,16 @@ def score_answer(task: dict[str, Any], answer: str | None) -> dict[str, bool]:
     sources = expected.get("reference_urls", [])
     terms_passed = all(term.lower() in answer for term in terms)
     sources_passed = not sources or any(source.lower() in answer for source in sources)
-    return {"terms_passed": terms_passed, "sources_passed": sources_passed, "passed": terms_passed and sources_passed}
+    return {
+        "terms_passed": terms_passed,
+        "sources_passed": sources_passed,
+        "passed": terms_passed and sources_passed,
+    }
 
 
-def capture_kestrel(task: dict[str, Any], run_id: str, artifact_dir: Path) -> tuple[dict[str, Any], str]:
+def capture_kestrel(
+    task: dict[str, Any], run_id: str, artifact_dir: Path
+) -> tuple[dict[str, Any], str]:
     environment = os.environ | {
         "KESTRELSEARCH_BENCHMARK_ARTIFACT_DIR": str(artifact_dir),
         "KESTRELSEARCH_BENCHMARK_RUN_ID": run_id,
@@ -177,8 +195,17 @@ def capture_kestrel(task: dict[str, Any], run_id: str, artifact_dir: Path) -> tu
     }
     started = time.perf_counter()
     completed = subprocess.run(  # noqa: S603
-        [str(Path(sys.executable).parent / "kestrelsearch"), "search", task.get("search_query", task["prompt"]), "--output", "json"],
-        check=True, env=environment, text=True, capture_output=True,
+        [
+            str(Path(sys.executable).parent / "kestrelsearch"),
+            "search",
+            task.get("search_query", task["prompt"]),
+            "--output",
+            "json",
+        ],
+        check=True,
+        env=environment,
+        text=True,
+        capture_output=True,
     )
     artifact_path = next(artifact_dir.glob(f"{run_id}-*.json"), None)
     if artifact_path is None:
@@ -197,14 +224,21 @@ def capture_kestrel(task: dict[str, Any], run_id: str, artifact_dir: Path) -> tu
     artifact["agent_elapsed_ms"] = round((time.perf_counter() - started) * 1000)
     results = cast(list[dict[str, Any]], artifact["results"])
     payload = "\n\nRetrieved Kestrel material:\n" + "\n\n".join(
-        f"Source: {item['url']}\n{item.get('content') or item['snippet']}" for item in results
+        f"Source: {item['url']}\n{item.get('content') or item['snippet']}"
+        for item in results
     )
     return artifact, payload
 
 
 def run_once(
-    command: list[str], task: dict[str, Any], arm: str, trial: int, timeout: int, run_id: str,
-    artifact_dir: Path, prefetched: dict[str, Any] | None = None,
+    command: list[str],
+    task: dict[str, Any],
+    arm: str,
+    trial: int,
+    timeout: int,
+    run_id: str,
+    artifact_dir: Path,
+    prefetched: dict[str, Any] | None = None,
 ) -> Measurement:
     started_at = datetime.now(UTC).isoformat()
     started = time.perf_counter()
@@ -231,10 +265,15 @@ def run_once(
         "artifact_paths": [str(path) for path in artifact_dir.glob(f"{run_id}-*.json")],
         "invocations": len(artifacts),
         "returned_chars": sum(artifact["returned_chars"] for artifact in artifacts),
-        "estimated_input_tokens": sum(artifact["returned_chars"] for artifact in artifacts) // 4,
+        "estimated_input_tokens": sum(
+            artifact["returned_chars"] for artifact in artifacts
+        )
+        // 4,
         "verified": arm != "kestrel" or bool(artifacts and artifacts[0]["verified"]),
         "agent_elapsed_ms": agent_elapsed_ms,
-        "retrieval_elapsed_ms": prefetched.get("agent_elapsed_ms", 0) if prefetched else 0,
+        "retrieval_elapsed_ms": prefetched.get("agent_elapsed_ms", 0)
+        if prefetched
+        else 0,
     }
     return Measurement(
         run_id=run_id,
@@ -242,7 +281,8 @@ def run_once(
         arm=arm,
         trial=trial,
         started_at=started_at,
-        elapsed_ms=agent_elapsed_ms + (prefetched.get("agent_elapsed_ms", 0) if prefetched else 0),
+        elapsed_ms=agent_elapsed_ms
+        + (prefetched.get("agent_elapsed_ms", 0) if prefetched else 0),
         exit_code=completed.returncode,
         usage=usage,
         final_answer=answer,
@@ -270,7 +310,14 @@ def main() -> int:
             if args.dry_run:
                 continue
             measurement = run_once(
-                command, task, args.arm, trial, args.timeout, run_id, artifact_dir, prefetched
+                command,
+                task,
+                args.arm,
+                trial,
+                args.timeout,
+                run_id,
+                artifact_dir,
+                prefetched,
             )
             with output.open("a") as result_file:
                 result_file.write(json.dumps(asdict(measurement)) + "\n")

@@ -58,27 +58,39 @@ def main() -> int:
         successes = sum(row["exit_code"] == 0 for row in rows)
         verified = sum(row.get("retrieval", {}).get("verified", True) for row in rows)
         quality = sum(row.get("quality", {}).get("passed", False) for row in rows)
-        reviewed = [evaluations[row["run_id"]] for row in rows if row["run_id"] in evaluations]
+        reviewed = [
+            evaluations[row["run_id"]] for row in rows if row["run_id"] in evaluations
+        ]
         print(f"{arm}: {len(rows)} trials, {successes}/{len(rows)} completed")
         print(f"  retrieval verified: {verified}/{len(rows)}")
         print(f"  task quality checks: {quality}/{len(rows)}")
         if reviewed:
             semantic_passed = sum(evaluation["pass"] for evaluation in reviewed)
-            semantic_score = sum(evaluation["total"] for evaluation in reviewed) / len(reviewed)
+            semantic_score = sum(evaluation["total"] for evaluation in reviewed) / len(
+                reviewed
+            )
             print(
                 f"  semantic evaluation: {semantic_passed}/{len(reviewed)} passed, "
                 f"mean={semantic_score:.2f}/8"
             )
-        print(f"  latency ms: p50={median(latencies):.0f} p95={percentile(latencies, 0.95)}")
+        print(
+            f"  latency ms: p50={median(latencies):.0f} p95={percentile(latencies, 0.95)}"
+        )
         print(f"  total tokens: p50={median(tokens):.0f}")
-        print(f"  retrieved-content estimate: p50={median(retrieval_tokens):.0f} tokens")
+        print(
+            f"  retrieved-content estimate: p50={median(retrieval_tokens):.0f} tokens"
+        )
         by_task: dict[str, list[dict]] = defaultdict(list)
         for row in rows:
             by_task[row["task_id"]].append(row)
         for task_id, task_rows in sorted(by_task.items()):
-            passed = sum(row.get("quality", {}).get("passed", False) for row in task_rows)
+            passed = sum(
+                row.get("quality", {}).get("passed", False) for row in task_rows
+            )
             task_latency = median(row["elapsed_ms"] for row in task_rows)
-            print(f"  {task_id}: quality={passed}/{len(task_rows)} p50={task_latency:.0f} ms")
+            print(
+                f"  {task_id}: quality={passed}/{len(task_rows)} p50={task_latency:.0f} ms"
+            )
     return 0
 
 

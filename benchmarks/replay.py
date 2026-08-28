@@ -23,13 +23,16 @@ def main() -> int:
         parser.error("OPENAI_API_KEY is required for replay")
     artifact = json.loads(args.artifact.read_text())
     payload = "\n\n".join(
-        f"Source: {result['url']}\n{(result.get('content') or result['snippet'])[:args.content_limit]}"
+        f"Source: {result['url']}\n{(result.get('content') or result['snippet'])[: args.content_limit]}"
         for result in artifact["results"]
     )
     request = {
         "model": args.model,
         "input": f"{args.prompt}\n\nRetrieved material:\n{payload}",
-        "metadata": {"benchmark_run_id": artifact["run_id"], "benchmark_arm": "kestrel_replay"},
+        "metadata": {
+            "benchmark_run_id": artifact["run_id"],
+            "benchmark_arm": "kestrel_replay",
+        },
     }
     response = httpx.post(
         "https://api.openai.com/v1/responses",
@@ -39,7 +42,9 @@ def main() -> int:
     )
     response.raise_for_status()
     body = response.json()
-    print(json.dumps({"usage": body.get("usage"), "output": body.get("output")}, indent=2))
+    print(
+        json.dumps({"usage": body.get("usage"), "output": body.get("output")}, indent=2)
+    )
     return 0
 
 
