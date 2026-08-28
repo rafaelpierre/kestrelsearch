@@ -45,6 +45,8 @@ def _remove_page_chrome(soup: BeautifulSoup) -> None:
         element.decompose()
 
     for element in list(soup.find_all(["div", "section"])):
+        if element.attrs is None:
+            continue
         classes = str(element.get("class") or "").lower()
         elem_id = str(element.get("id") or "").lower()
         if any(

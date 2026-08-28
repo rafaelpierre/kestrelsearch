@@ -29,6 +29,22 @@ def test_parse_content_returns_none_when_no_meaningful_text_exists():
     assert fetcher._parse_content("<html><body><p>short</p></body></html>", 100) is None
 
 
+def test_parse_content_handles_nested_nodes_removed_with_their_parent():
+    html = """
+    <main>
+      <div class="sidebar"><section class="nested">Ignored nested clutter</section></div>
+      <p>This meaningful content remains available after nested clutter is removed.</p>
+    </main>
+    """
+
+    content = fetcher._parse_content(html, 500)
+
+    assert (
+        content
+        == "This meaningful content remains available after nested clutter is removed."
+    )
+
+
 def test_fetch_one_uses_mock_transport_and_handles_http_errors():
     async def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/ok":
