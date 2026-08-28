@@ -44,6 +44,7 @@ upload_to_vcs_release = false
 dev = [
     "arize-phoenix>=20.4.0",
     "complexipy>=7.0.1",
+    "prek>=0.4.14",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "python-semantic-release>=10.6.1",

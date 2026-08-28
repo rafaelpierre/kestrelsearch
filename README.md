@@ -162,3 +162,19 @@ cd kestrelsearch
 uv sync
 uv run kestrelsearch search "test"
 ```
+
+Install the repository's `prek` hook once per clone:
+
+```bash
+uv run prek install
+```
+
+On each commit, prek passes only the staged Python files to Ruff formatting, Ruff linting, and ty. Complexipy receives only changed production files under `src`, matching the existing CI scope and its maximum allowed complexity of 15. The hooks use the versions locked in the project's `uv` environment and do not rewrite files automatically. Run the same checks manually with:
+
+```bash
+# Files changed in the current HEAD commit
+uv run prek run --last-commit
+
+# Every tracked file, useful after changing tool configuration
+uv run prek run --all-files
+```
