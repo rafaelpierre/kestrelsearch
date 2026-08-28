@@ -34,6 +34,27 @@ kestrelsearch search "your query" \
 Provider HTML and throttling can change. Narrow region or recency filters may
 also reduce results.
 
+## An all-`--query` command reports `Missing argument 'QUERY'`
+
+Current versions accept one or more `-q` or `--query` options without a
+positional query:
+
+```bash
+kestrelsearch search \
+  -q "first query" \
+  -q "second query" \
+  --output json
+```
+
+If this form reports `Missing argument 'QUERY'`, upgrade the installed tool:
+
+```bash
+uv tool upgrade kestrelsearch
+```
+
+As a compatibility workaround for an older installation, make the first query
+positional and use `-q` for the remaining queries.
+
 ## Results have null content
 
 `content` is null when:

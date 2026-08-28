@@ -61,5 +61,22 @@ kestrelsearch search "python typing" \
   --mode fanout
 ```
 
+## Run multiple queries
+
+Repeat `-q` or `--query` to search several queries in one command. You do not
+need to provide a separate positional query:
+
+```bash
+kestrelsearch search \
+  -q "python typing documentation" \
+  -q "pyright documentation" \
+  --engine duckduckgo \
+  --engine bing \
+  --mode fanout
+```
+
+The positional form remains available for a single query and can be combined
+with repeated `--query` options.
+
 Continue with [multi-query and multi-provider search](/guides/multi-query-search)
 or [install the agent skill](/guides/agent-integration).

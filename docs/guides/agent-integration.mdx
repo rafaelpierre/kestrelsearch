@@ -36,13 +36,17 @@ Restart the agent session after installing the skill.
 JSON is the recommended output format:
 
 ```bash
-kestrelsearch search "recent Python packaging changes" \
+kestrelsearch search \
+  -q "recent Python packaging changes" \
+  -q "Python packaging release notes" \
   --time-filter m \
   --top-k 3 \
   --output json
 ```
 
-Progress is written to stderr, leaving stdout safe for parsing.
+Agents can supply every query through repeatable `-q` or `--query` options;
+the positional query is optional. Progress is written to stderr, leaving
+stdout safe for parsing.
 
 ## Remove installed skills
 

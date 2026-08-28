@@ -35,11 +35,18 @@ kestrelsearch search "python typing" \
 
 ## Run multiple queries
 
+Repeat `-q` or `--query`. A positional query is optional when at least one
+query option is present:
+
 ```bash
-kestrelsearch search "python typing" \
-  --query "pyright documentation" \
+kestrelsearch search \
+  -q "python typing" \
+  -q "pyright documentation" \
   --mode fanout
 ```
+
+You can also combine the forms, for example
+`kestrelsearch search "python typing" -q "pyright documentation"`.
 
 ## Return recent results
 
