@@ -4,9 +4,24 @@
   <img src="static/logo.png" alt="Kestrel Search logo" width="360">
 </p>
 
-Kestrel Search is a local web-search capability for coding assistants. Install it once, let your assistant discover its generated `SKILL.md`, and it can search the web, retrieve readable page content, and return focused results while you stay in your coding workflow.
+<p align="center">
+  <a href="https://docs.python.org/3.13/"><img src="https://img.shields.io/badge/Python-3.13%2B-3776AB?style=for-the-badge&amp;logo=python&amp;logoColor=white" alt="Python 3.13+"></a>
+  <a href="https://docs.astral.sh/ruff/"><img src="https://img.shields.io/badge/Lint_%26_Format-Ruff-D7FF64?style=for-the-badge&amp;logo=ruff&amp;logoColor=261230" alt="Linted and formatted with Ruff"></a>
+  <a href="https://docs.astral.sh/ty/"><img src="https://img.shields.io/badge/Type_Checked-ty-8A2BE2?style=for-the-badge" alt="Type checked with ty"></a>
+  <a href="https://rohaquinlop.github.io/complexipy/"><img src="https://img.shields.io/badge/Complexity-Complexipy-2F6FEB?style=for-the-badge" alt="Complexity checked with Complexipy"></a>
+  <a href="https://kestrel.mintlify.app"><img src="https://img.shields.io/badge/Docs-Mintlify-0D9373?style=for-the-badge&amp;logo=mintlify&amp;logoColor=white" alt="Documentation on Mintlify"></a>
+</p>
 
-Under the hood, it searches DuckDuckGo, Bing, or Yahoo, fetches result pages concurrently, extracts their main text, and re-ranks the results with BM25. It can fan out multiple queries across engines or use engines as an ordered fallback chain. The command line stays pipe-friendly: data goes to stdout and progress goes to stderr.
+<p align="center">
+  <a href="https://kestrel.mintlify.app">Documentation</a> ·
+  <a href="https://kestrel.mintlify.app/installation">Installation</a> ·
+  <a href="https://pypi.org/project/kestrelsearch/">PyPI</a> ·
+  <a href="#benchmark-kestrel-fanout-vs-native-web-search">Benchmarks</a>
+</p>
+
+Kestrel Search brings live, keyless web research to coding assistants. It searches DuckDuckGo, Bing, or Yahoo, retrieves result pages concurrently, extracts their readable content, and re-ranks the results with BM25—all without taking you out of your coding workflow.
+
+Install it once and let your assistant discover the generated `SKILL.md`, or use the pipe-friendly CLI directly. Kestrel can fan out multiple queries across engines or use them as an ordered fallback chain. Results go to stdout and progress goes to stderr, keeping both terminal and JSON workflows clean.
 
 > **Note** Kestrel Search is an independent project and is not affiliated with DuckDuckGo, Microsoft, Bing, or Yahoo.
 
@@ -15,10 +30,10 @@ Under the hood, it searches DuckDuckGo, Bing, or Yahoo, fetches result pages con
 Requires Python 3.13 or later.
 
 ```bash
-# With uv
+# Recommended: install as an isolated CLI with uv
 uv tool install kestrelsearch
 
-# Or with pip
+# Or install with pip
 pip install kestrelsearch
 ```
 
@@ -73,7 +88,7 @@ Each result contains the search metadata plus extracted content when fetching is
 | `engine_rank` | Result position in that engine/query response |
 | `sources` | All engine/query occurrences merged into the URL |
 
-To make the command discoverable to supported coding agents, install its generated `SKILL.md`:
+To make the command discoverable to supported coding agents, install its generated `SKILL.md`. See the [agent integration guide](https://kestrel.mintlify.app/guides/agent-integration) for the full workflow.
 
 ```bash
 # Prompts for the agent and whether to install locally or globally
@@ -144,6 +159,88 @@ The candidate pool is selected from the round-robin merged search results, which
 
 Kestrel currently performs live retrieval and does not persistently cache search responses or page content. Repeating a command therefore contacts the configured providers again; benchmark runs should treat cold, frozen, and any future cached modes as distinct measurements.
 
+## Benchmark: Kestrel fanout vs. native Web Search
+
+On 28 August 2026, we ran a small paired benchmark comparing Kestrel's
+three-provider fanout with Codex's native Web Search. Both arms received the
+same eight technical web-research tasks and ran each task three times, for 24
+trials per arm (48 total). Kestrel searched DuckDuckGo, Bing, and Yahoo
+concurrently; the native arm was required to use Codex Web Search at least once.
+
+| Metric | Native Web Search | Kestrel fanout | Difference |
+| --- | ---: | ---: | ---: |
+| Completed trials | 24/24 | 24/24 | — |
+| Semantic passes | **22/24** | 21/24 | Native +1 trial |
+| Mean semantic score | **7.58/8** | 7.54/8 | −0.04 |
+| End-to-end latency, p50 | 20,970 ms | **16,798 ms** | **19.9% lower** |
+| End-to-end latency, p95 | 43,318 ms | **23,147 ms** | **46.6% lower** |
+| Total model tokens, p50 | 48,989 | **31,135** | **36.4% fewer** |
+
+<p align="center">
+  <img src="static/benchmark-distributions.png" alt="Trial-level latency and token distributions for native Web Search and Kestrel fanout" width="960">
+</p>
+
+Each dot is one complete trial and each dark tick is the median. End-to-end
+Kestrel latency includes retrieval and answer generation. Token counts are the
+Codex-reported input, output, and reasoning tokens; cached input is not counted
+a second time.
+
+<p align="center">
+  <img src="static/benchmark-task-quality.png" alt="Semantic benchmark passes by research task for native Web Search and Kestrel fanout" width="960">
+</p>
+
+Answer quality was reviewed using the shared rubric in [`SKILLS.md`](SKILLS.md):
+correctness, grounding, source quality, and completeness each receive 0–2
+points. A passing answer needs at least 6/8, correctness and grounding of at
+least 1, and no material contradiction from its cited sources. Generated
+keyword checks were treated only as regression signals.
+
+Native Search's two failures were on source reconciliation: the answers called
+Python 3.15 the future development release, while the current official
+development guide identifies 3.16 as the future main-branch release. Kestrel's
+three failures were synthesis errors on PyPI publishing guidance: the retrieved
+material contained the relevant publisher page, but the answers substituted
+the mandatory `id-token: write` permission for PyPI's strongly recommended
+GitHub Environment setting.
+
+All 24 Kestrel retrieval artifacts recorded `fanout` with all three configured
+providers. Across the provenance attached to retained results, DuckDuckGo
+appeared 107 times, Yahoo 88 times, and Bing 84 times; these are overlapping
+source occurrences after URL deduplication, not independent trial counts.
+
+The interactive, dependency-free report is in
+[`benchmarks/viz/`](benchmarks/viz/). Its embedded
+[`data.js`](benchmarks/viz/data.js) contains all 48 trial-level measurements and the page
+can export them as JSON or CSV. Benchmark tasks, runner documentation, and the
+semantic evaluation method are under [`benchmarks/`](benchmarks/README.md).
+
+### Limitations
+
+- This is a small developer-focused suite—eight tasks with three trials each—so
+  it should be read as a project benchmark, not a universal performance claim.
+- Retrieval was live and uncached. Search results, source availability, network
+  conditions, and model behavior can change between runs.
+- Kestrel used three-provider fanout. This run does not isolate individual
+  provider quality and does not measure ordered fallback behavior.
+- The arms use different research workflows: Kestrel retrieves a bounded result
+  set before answer synthesis, while native Web Search can search iteratively.
+  The comparison measures the end-to-end user-visible paths, not search engines
+  in isolation.
+- Semantic scoring is evidence-based but still involves reviewer judgment. One
+  task fixture expected Python 3.15 and was marked stale when current official
+  sources identified Python 3.16 as the future main-branch release.
+- The interrupted two-record fallback run was excluded from every number and
+  visual reported here.
+
+For broader deep-research evaluation, this repository also supports seeded
+samples from DeepSearchQA. The paper
+[*DeepSearchQA: Bridging the Comprehensiveness Gap for Deep Research Agents*](https://arxiv.org/abs/2601.20975)
+by Nikita Gupta et al. introduces a 900-prompt benchmark spanning 17 fields and
+emphasizes multi-step search, systematic information collation, entity
+resolution, and stopping criteria. The 48-trial comparison above uses the
+repository's separate hand-authored web-retrieval suite; it is **not** a
+DeepSearchQA leaderboard score.
+
 ## How it works
 
 1. Kestrel Search trims and deduplicates queries, then submits them according to the selected fanout or fallback mode. HTTP connections—and Yahoo's browser-impersonating session—are reused for the lifetime of the invocation.
@@ -157,7 +254,7 @@ PDFs are skipped during page fetching. By default Kestrel fetches at most three 
 ## Development
 
 ```bash
-git clone https://github.com/rafaelpierre/kestrelsearch
+git clone https://github.com/rafaelpierre/kestrelsearch.git
 cd kestrelsearch
 uv sync
 uv run kestrelsearch search "test"

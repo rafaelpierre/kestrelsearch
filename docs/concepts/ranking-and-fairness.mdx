@@ -1,0 +1,52 @@
+---
+title: "Ranking and fairness"
+description: "Understand BM25 ranking, candidate selection, and multi-query interleaving."
+---
+
+# Ranking and fairness
+
+Kestrel combines provider ordering with local content relevance while preserving
+diversity across multiple queries.
+
+## Candidate selection
+
+Search results are round-robin merged before fetching. Taking a bounded prefix
+therefore preserves query and provider diversity better than concatenating one
+provider's complete list before the next.
+
+The default fetch pool is:
+
+```text
+3 × top-k
+```
+
+Override it with `--fetch-candidates` when you need a different recall and
+latency tradeoff.
+
+## BM25 ranking
+
+Kestrel tokenizes the original query and extracted page content into lowercase
+word tokens. BM25 scores each fetched result within its originating-query group.
+
+Results with positive scores are sorted from highest to lowest. If an entire
+query group has no positive BM25 scores, its original provider order is retained
+instead of dropping the group.
+
+## Multi-query interleaving
+
+Ranked query groups are interleaved round-robin. This prevents a broad or
+high-volume query from monopolizing the final results.
+
+Because BM25 scores belong to different query-specific corpora, compare them
+within a query group rather than treating them as globally calibrated values.
+
+## Disable ranking
+
+Keep the merged provider order with:
+
+```bash
+kestrelsearch search "python typing" --no-rank
+```
+
+Ranking requires fetched page content. `--no-fetch` therefore bypasses both
+extraction and BM25.

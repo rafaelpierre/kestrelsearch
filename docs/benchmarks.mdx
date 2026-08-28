@@ -1,0 +1,99 @@
+---
+title: "Benchmarks"
+description: "Results from the paired Kestrel fanout and native Web Search benchmark."
+---
+
+# Benchmarks
+
+On 28 August 2026, the project ran a small paired benchmark comparing Kestrel's
+three-provider fanout with Codex's native Web Search. Both arms received the
+same eight technical web-research tasks and ran each task three times, producing
+24 trials per arm and 48 trials in total.
+
+Kestrel searched DuckDuckGo, Bing, and Yahoo concurrently. The native arm was
+required to use Codex Web Search at least once.
+
+## Results
+
+| Metric | Native Web Search | Kestrel fanout | Difference |
+| --- | ---: | ---: | ---: |
+| Completed trials | 24/24 | 24/24 | — |
+| Semantic passes | **22/24** | 21/24 | Native +1 trial |
+| Mean semantic score | **7.58/8** | 7.54/8 | −0.04 |
+| End-to-end latency, p50 | 20,970 ms | **16,798 ms** | **19.9% lower** |
+| End-to-end latency, p95 | 43,318 ms | **23,147 ms** | **46.6% lower** |
+| Total model tokens, p50 | 48,989 | **31,135** | **36.4% fewer** |
+
+![Trial-level latency and token distributions for native Web Search and Kestrel fanout](/images/benchmark-distributions.png)
+
+Each dot represents one complete trial; each dark tick is the median. Kestrel's
+end-to-end latency includes retrieval and answer generation. Token counts are
+the Codex-reported input, output, and reasoning tokens, without counting cached
+input a second time.
+
+## Answer quality
+
+![Semantic benchmark passes by research task for native Web Search and Kestrel fanout](/images/benchmark-task-quality.png)
+
+Both arms were reviewed with the same rubric. Correctness, grounding, source
+quality, and completeness each received 0–2 points. A passing answer required:
+
+- Correctness and grounding of at least 1 each.
+- A total score of at least 6 out of 8.
+- No material contradiction from a cited source.
+
+Generated keyword checks were used only as regression signals, not as ground
+truth.
+
+### Reviewed failures
+
+In this run, native Web Search's two failures involved source reconciliation.
+The answers identified Python 3.15 as the future development release, while the
+current official development guide identified Python 3.16 as the future
+main-branch release.
+
+Kestrel's three failures were synthesis errors involving PyPI publishing
+guidance. The retrieved material contained the relevant publisher page, but the
+answers substituted the mandatory `id-token: write` permission for PyPI's
+strongly recommended GitHub Environment setting.
+
+## Retrieval provenance
+
+All 24 Kestrel retrieval artifacts recorded fanout mode with DuckDuckGo, Bing,
+and Yahoo configured. Across retained-result provenance:
+
+- DuckDuckGo appeared 107 times.
+- Yahoo appeared 88 times.
+- Bing appeared 84 times.
+
+These are overlapping source occurrences after URL deduplication, not
+independent trial counts.
+
+## Limitations
+
+- This was a small, developer-focused suite: eight tasks with three trials per
+  task. Treat it as a project benchmark, not a universal performance claim.
+- Retrieval was live and uncached. Search results, source availability, network
+  conditions, and model behavior can change between runs.
+- Kestrel used three-provider fanout. The run does not isolate provider quality
+  or measure ordered fallback behavior.
+- The workflows differ. Kestrel retrieves a bounded result set before answer
+  synthesis, while native Web Search can search iteratively. The comparison is
+  between complete user-visible paths, not isolated search engines.
+- Semantic scoring is evidence-based but still involves reviewer judgment. A
+  stale Python-version fixture was recorded rather than treating current
+  official information as incorrect.
+- An interrupted two-record fallback run was excluded from every reported
+  number and visual.
+
+## DeepSearchQA support
+
+The repository can also run reproducible seeded samples from
+[*DeepSearchQA: Bridging the Comprehensiveness Gap for Deep Research Agents*](https://arxiv.org/abs/2601.20975),
+a 900-prompt benchmark spanning 17 fields.
+
+The results on this page use the project's separate, hand-authored web-retrieval
+suite. They are not a DeepSearchQA leaderboard score.
+
+See [benchmark methodology](/benchmarks/methodology) to reproduce the harness
+and apply the evaluation rubric.

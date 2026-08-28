@@ -46,6 +46,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--arm", choices=("native", "kestrel"), required=True)
     parser.add_argument("--trials", type=int, default=3)
+    parser.add_argument(
+        "--engine",
+        action="append",
+        choices=("duckduckgo", "bing", "yahoo"),
+        dest="engines",
+        help=(
+            "Kestrel search engine. Repeat to set fanout engines or fallback "
+            "order (default: duckduckgo)."
+        ),
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("fallback", "fanout"),
+        default="fallback",
+        help="Kestrel multi-engine search mode (default: %(default)s).",
+    )
     parser.add_argument("--timeout", type=int, default=600)
     parser.add_argument(
         "--codex-command",
@@ -57,6 +73,7 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if args.trials < 1:
         parser.error("--trials must be at least 1")
+    args.engines = args.engines or ["duckduckgo"]
     return args
 
 
@@ -186,7 +203,11 @@ def score_answer(task: dict[str, Any], answer: str | None) -> dict[str, bool]:
 
 
 def capture_kestrel(
-    task: dict[str, Any], run_id: str, artifact_dir: Path
+    task: dict[str, Any],
+    run_id: str,
+    artifact_dir: Path,
+    engines: list[str],
+    mode: str,
 ) -> tuple[dict[str, Any], str]:
     environment = os.environ | {
         "KESTRELSEARCH_BENCHMARK_ARTIFACT_DIR": str(artifact_dir),
@@ -194,14 +215,19 @@ def capture_kestrel(
         "KESTRELSEARCH_OTEL_ENDPOINT": "http://127.0.0.1:4317",
     }
     started = time.perf_counter()
+    command = [
+        str(Path(sys.executable).parent / "kestrelsearch"),
+        "search",
+        task.get("search_query", task["prompt"]),
+        "--output",
+        "json",
+        "--mode",
+        mode,
+    ]
+    for engine in engines:
+        command.extend(("--engine", engine))
     completed = subprocess.run(  # noqa: S603
-        [
-            str(Path(sys.executable).parent / "kestrelsearch"),
-            "search",
-            task.get("search_query", task["prompt"]),
-            "--output",
-            "json",
-        ],
+        command,
         check=True,
         env=environment,
         text=True,
@@ -304,7 +330,9 @@ def main() -> int:
             run_id = uuid.uuid4().hex
             prefetched, payload = (None, "")
             if not args.dry_run and args.arm == "kestrel":
-                prefetched, payload = capture_kestrel(task, run_id, artifact_dir)
+                prefetched, payload = capture_kestrel(
+                    task, run_id, artifact_dir, args.engines, args.mode
+                )
             command = build_command(args.codex_command, task, args.arm, run_id, payload)
             print(f"[{args.arm}] {task['id']} trial {trial}: {shlex.join(command)}")
             if args.dry_run:

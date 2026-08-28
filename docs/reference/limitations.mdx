@@ -1,0 +1,51 @@
+---
+title: "Limitations"
+description: "Current retrieval, provider, content, and caching limitations."
+---
+
+# Limitations
+
+Kestrel Search is designed for lightweight public-web retrieval, not browser
+automation or a complete search API replacement.
+
+## Provider HTML can change
+
+Kestrel parses public HTML search pages. Provider markup, throttling, bot
+protection, or regional behavior can change without notice and may temporarily
+reduce results.
+
+## No persistent cache
+
+Search responses and fetched page bodies are not persistently cached. Repeating
+a command contacts the configured providers and pages again.
+
+## PDF content is not fetched
+
+PDF URLs may appear as search results, but Kestrel does not download or extract
+their contents.
+
+## Text-oriented content only
+
+Page fetching accepts HTML, XHTML, and plain text. Images, video, binary files,
+and other unsupported content types are skipped.
+
+## JavaScript-rendered pages
+
+Kestrel downloads HTTP responses but does not execute page JavaScript. Content
+that appears only after client-side rendering may be missing.
+
+## Extraction is heuristic
+
+Main-content extraction removes common page chrome and selects likely content
+containers. Unusual layouts may produce incomplete text or retain some noise.
+
+## Search filters differ by provider
+
+DuckDuckGo and Yahoo receive Kestrel's recency filter. Bing currently ignores
+`--time-filter`. Region codes are also translated to each provider's supported
+parameter format.
+
+## Not browser automation
+
+Kestrel does not sign in, submit forms, click controls, or complete transactions.
+Use a browser automation tool for interactive workflows.

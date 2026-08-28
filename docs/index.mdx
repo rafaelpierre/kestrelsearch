@@ -11,6 +11,9 @@ It searches DuckDuckGo, Bing, or Yahoo, retrieves readable page content, and
 re-ranks results with BM25. It works from the command line and provides
 structured JSON output for agents and scripts.
 
+Use it when an agent needs current documentation, release information, standards,
+or other public web content without leaving the local development workflow.
+
 ## Why Kestrel Search?
 
 - No search API key required
@@ -36,5 +39,23 @@ kestrelsearch search "python dataclasses" --output json
 ## Next steps
 
 - [Install Kestrel Search](/installation)
+- [Run your first searches](/quickstart)
 - [Connect it to your coding agent](/guides/agent-integration)
 - [Explore search options](/guides/search-options)
+
+## Learn how it works
+
+- [Search pipeline](/concepts/search-pipeline)
+- [Ranking and result fairness](/concepts/ranking-and-fairness)
+- [JSON output schema](/reference/output-schema)
+- [Limitations](/reference/limitations)
+
+## Project benchmark
+
+In a small paired benchmark run on 28 August 2026, Kestrel's three-provider
+fanout completed all 24 trials with answer quality close to native Web Search,
+lower median latency, and fewer median model tokens. The suite contained eight
+technical research tasks with three trials per task.
+
+Read the [full results and limitations](/benchmarks). This project benchmark is
+not a universal performance claim or a DeepSearchQA leaderboard score.

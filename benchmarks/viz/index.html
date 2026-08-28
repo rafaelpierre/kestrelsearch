@@ -1,0 +1,551 @@
+<!doctype html>
+<!-- Static benchmark dashboard; open directly or serve from the repository root. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A transparent comparison of Kestrel fanout and Codex native Web Search across 48 benchmark trials.">
+  <title>Kestrel × Native Web Search — Benchmark</title>
+  <style>
+    :root {
+      --ink: #102a2e;
+      --muted: #607173;
+      --paper: #f7f4ec;
+      --panel: #fffdf8;
+      --line: #d9ddd6;
+      --kestrel: #0b7d77;
+      --kestrel-soft: #d4ece8;
+      --native: #e16a3d;
+      --native-soft: #f8dfd2;
+      --lime: #c9eb66;
+      --fail: #b43b38;
+      --shadow: 0 18px 50px rgba(16, 42, 46, .08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 82% 3%, rgba(201, 235, 102, .2), transparent 25rem),
+        linear-gradient(var(--paper), #f3f1ea);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-variant-numeric: tabular-nums;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      opacity: .22;
+      background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 80L80 0M20 80L80 20M0 60L60 0' stroke='%2387978f' stroke-width='.45' fill='none'/%3E%3C/svg%3E");
+    }
+
+    a { color: inherit; }
+    button { font: inherit; }
+    .wrap { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 0;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: white;
+      background: var(--ink);
+      font-size: 14px;
+    }
+
+    .topbar a { color: var(--muted); text-decoration: none; }
+    .topbar a:hover { color: var(--ink); }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.35fr .65fr;
+      gap: 56px;
+      align-items: end;
+      padding: 70px 0 58px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 18px;
+      color: var(--kestrel);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 760px;
+      margin-bottom: 22px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(50px, 7vw, 92px);
+      font-weight: 500;
+      letter-spacing: -.055em;
+      line-height: .92;
+    }
+
+    .hero-copy {
+      max-width: 710px;
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 21px);
+      line-height: 1.55;
+    }
+
+    .hero-note {
+      padding: 24px;
+      border: 1px solid rgba(16, 42, 46, .16);
+      border-radius: 3px;
+      background: rgba(255, 253, 248, .65);
+    }
+
+    .hero-note strong { display: block; margin-bottom: 8px; font-size: 28px; }
+    .hero-note p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .chip {
+      padding: 8px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,.45);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    main { padding: 50px 0 80px; }
+    .section { margin-top: 68px; }
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 32px;
+      margin-bottom: 24px;
+    }
+    .section-head h2 {
+      margin-bottom: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(30px, 4vw, 45px);
+      font-weight: 500;
+      letter-spacing: -.025em;
+    }
+    .section-head p { max-width: 520px; margin: 0; color: var(--muted); line-height: 1.5; }
+
+    .legend { display: flex; gap: 18px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    .legend span { display: flex; align-items: center; gap: 7px; }
+    .swatch { width: 10px; height: 10px; border-radius: 50%; }
+    .swatch.native { background: var(--native); }
+    .swatch.kestrel { background: var(--kestrel); }
+
+    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .card {
+      min-height: 220px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .card.highlight { background: var(--ink); color: white; border-color: var(--ink); }
+    .card-label { color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .highlight .card-label { color: #a9c0bc; }
+    .big-number { margin: 28px 0 6px; font-family: Georgia, serif; font-size: clamp(38px, 5vw, 58px); line-height: 1; letter-spacing: -.04em; }
+    .big-number small { font-family: Inter, sans-serif; font-size: 16px; letter-spacing: 0; }
+    .card-sub { color: var(--muted); font-size: 14px; line-height: 1.45; }
+    .highlight .card-sub { color: #c3d2cf; }
+    .delta {
+      display: inline-flex;
+      margin-top: 20px;
+      padding: 6px 9px;
+      border-radius: 99px;
+      background: var(--kestrel-soft);
+      color: #075e59;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .highlight .delta { background: var(--lime); color: var(--ink); }
+
+    .plot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .plot-card, .task-card, .raw-card {
+      padding: 26px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .plot-title { margin-bottom: 2px; font-size: 16px; }
+    .plot-note { margin-bottom: 18px; color: var(--muted); font-size: 13px; }
+    .strip { min-height: 210px; }
+    .strip svg { display: block; width: 100%; height: auto; overflow: visible; }
+    .axis-text { fill: var(--muted); font-size: 11px; }
+    .group-text { fill: var(--ink); font-size: 12px; font-weight: 700; }
+    .grid-line { stroke: var(--line); stroke-width: 1; }
+    .median-line { stroke: var(--ink); stroke-width: 2; }
+    .trial-dot { transition: r .15s ease, opacity .15s ease; cursor: help; }
+    .trial-dot:hover { r: 7; opacity: 1; }
+
+    .task-card { overflow-x: auto; padding: 0; }
+    .task-row {
+      display: grid;
+      grid-template-columns: minmax(235px, 1.5fr) minmax(180px, 1fr) minmax(180px, 1fr) 80px;
+      align-items: center;
+      min-width: 720px;
+      min-height: 68px;
+      padding: 0 22px;
+      border-bottom: 1px solid #e9e9e3;
+    }
+    .task-row:last-child { border-bottom: 0; }
+    .task-row.header { min-height: 48px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+    .task-name { font-size: 14px; font-weight: 700; }
+    .pass-dots { display: flex; align-items: center; gap: 7px; }
+    .pass-dot { width: 15px; height: 15px; border: 1px solid currentColor; border-radius: 50%; }
+    .pass-dot.on.native { color: var(--native); background: var(--native); }
+    .pass-dot.on.kestrel { color: var(--kestrel); background: var(--kestrel); }
+    .pass-dot.off { color: #cbd0ca; background: transparent; }
+    .score { color: var(--muted); font-size: 13px; }
+
+    .findings { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .finding { padding: 22px 24px; border-left: 4px solid; background: rgba(255,255,255,.5); }
+    .finding.native { border-color: var(--native); }
+    .finding.kestrel { border-color: var(--kestrel); }
+    .finding h3 { margin-bottom: 7px; font-size: 15px; }
+    .finding p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+
+    details.raw-card { padding: 0; }
+    details summary { padding: 24px 26px; cursor: pointer; font-weight: 800; list-style: none; }
+    details summary::-webkit-details-marker { display: none; }
+    details summary::after { content: "+"; float: right; color: var(--kestrel); font-size: 22px; line-height: 18px; }
+    details[open] summary::after { content: "−"; }
+    .raw-inner { padding: 0 26px 26px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+    .button {
+      padding: 10px 14px;
+      border: 1px solid var(--ink);
+      border-radius: 2px;
+      color: var(--ink);
+      background: transparent;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    .button.primary { color: white; background: var(--ink); }
+    .button:hover { transform: translateY(-1px); }
+    .table-wrap { max-height: 430px; overflow: auto; border: 1px solid var(--line); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #ecece6; text-align: left; }
+    th { position: sticky; top: 0; z-index: 1; background: #efeee8; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+    td.num { text-align: right; }
+    .status-pass { color: var(--kestrel); font-weight: 800; }
+    .status-fail { color: var(--fail); font-weight: 800; }
+
+    .method {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      padding: 34px;
+      color: #dbe5e2;
+      background: var(--ink);
+    }
+    .method h3 { margin-bottom: 8px; color: white; font-size: 14px; }
+    .method p { margin: 0; font-size: 13px; line-height: 1.55; }
+    footer { padding: 24px 0 40px; color: var(--muted); font-size: 12px; }
+
+    body.export-view header,
+    body.export-view main > section,
+    body.export-view footer { display: none; }
+    body.export-view main { padding: 36px 0; }
+    body.export-view main > section.export-target { display: block; margin-top: 0; }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 42px; }
+      .hero > *, .section-head > * { min-width: 0; width: 100%; }
+      .cards { grid-template-columns: 1fr 1fr; }
+      .plot-grid, .findings { grid-template-columns: 1fr; }
+      .section-head { align-items: start; flex-direction: column; gap: 12px; }
+    }
+    @media (max-width: 580px) {
+      .wrap { width: min(100% - 24px, 1180px); }
+      .topbar { padding-top: 16px; }
+      .topbar > a { display: none; }
+      .hero { padding: 34px 0 42px; }
+      .cards { grid-template-columns: 1fr; }
+      .card { min-height: 180px; }
+      .method { grid-template-columns: 1fr; padding: 26px; }
+      .plot-card { padding: 18px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <nav class="topbar" aria-label="Page navigation">
+      <div class="brand"><span class="brand-mark">K</span> Kestrel Search</div>
+      <a href="#raw">Inspect the raw numbers ↓</a>
+    </nav>
+
+    <div class="hero">
+      <div>
+        <p class="eyebrow">Live web retrieval benchmark · 28 August 2026</p>
+        <h1>Search,<br>measured.</h1>
+        <p class="hero-copy">Kestrel’s three-provider fanout delivered nearly the same answer quality as native Web Search—with lower median latency and substantially fewer tokens.</p>
+        <div class="chips" aria-label="Benchmark setup">
+          <span class="chip">8 research tasks</span>
+          <span class="chip">3 trials per task</span>
+          <span class="chip">24 trials per arm</span>
+          <span class="chip">Live, uncached retrieval</span>
+        </div>
+      </div>
+      <aside class="hero-note">
+        <strong>48 trials</strong>
+        <p>Same prompts and trial counts. Kestrel searched DuckDuckGo, Bing, and Yahoo concurrently; the control used Codex native Web Search.</p>
+      </aside>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section aria-labelledby="headline-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">The headline</p>
+          <h2 id="headline-title">Comparable quality. Leaner runs.</h2>
+        </div>
+        <div class="legend" aria-label="Series legend">
+          <span><i class="swatch native"></i>Native</span>
+          <span><i class="swatch kestrel"></i>Kestrel</span>
+        </div>
+      </div>
+      <div class="cards" id="summary-cards"></div>
+    </section>
+
+    <section class="section" id="distributions" aria-labelledby="distribution-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Every run, visible</p>
+          <h2 id="distribution-title">Look past the median.</h2>
+        </div>
+        <p>Each dot is one trial. The dark tick marks the median. Lower is better for both charts.</p>
+      </div>
+      <div class="plot-grid">
+        <article class="plot-card">
+          <h3 class="plot-title">End-to-end latency</h3>
+          <p class="plot-note">Retrieval plus answer generation, in seconds</p>
+          <div class="strip" id="latency-plot"></div>
+        </article>
+        <article class="plot-card">
+          <h3 class="plot-title">Total model tokens</h3>
+          <p class="plot-note">Input + output + reasoning tokens</p>
+          <div class="strip" id="tokens-plot"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="task-quality" aria-labelledby="task-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Where results diverged</p>
+          <h2 id="task-title">Quality, task by task.</h2>
+        </div>
+        <p>Filled circles are semantic passes under the project’s 8-point correctness, grounding, source-quality, and completeness rubric.</p>
+      </div>
+      <div class="task-card" id="task-matrix"></div>
+      <div class="findings">
+        <article class="finding native">
+          <h3>Native’s miss: source reconciliation</h3>
+          <p>Two runs called Python 3.15 the future development release. The current official devguide identifies 3.16 as the future main-branch release.</p>
+        </article>
+        <article class="finding kestrel">
+          <h3>Kestrel’s miss: PyPI publishing guidance</h3>
+          <p>Three runs gave the mandatory <code>id-token: write</code> permission instead of PyPI’s strongly recommended GitHub Environment setting.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="raw" aria-labelledby="raw-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Transparency</p>
+          <h2 id="raw-title">Take the numbers with you.</h2>
+        </div>
+        <p>Every chart above is computed in your browser from the 48 embedded trial records below.</p>
+      </div>
+      <details class="raw-card">
+        <summary>View all trial-level data</summary>
+        <div class="raw-inner">
+          <div class="actions">
+            <button class="button primary" id="download-json" type="button">Download JSON</button>
+            <button class="button" id="download-csv" type="button">Download CSV</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Arm</th><th>Task</th><th>Trial</th><th>Latency</th><th>Tokens</th><th>Score</th><th>Result</th><th>Failure stage</th></tr></thead>
+              <tbody id="raw-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="section method" aria-label="Methodology and caveats">
+      <div><h3>Matched setup</h3><p>Both arms received the same eight prompts and ran three times per task. Kestrel fanout used DuckDuckGo, Bing, and Yahoo concurrently.</p></div>
+      <div><h3>Human-readable scoring</h3><p>Quality uses semantic review, not literal keyword checks. A pass requires ≥6/8 plus minimum correctness and grounding thresholds.</p></div>
+      <div><h3>Read with care</h3><p>This is a small live-web benchmark, not a universal claim. Results can vary as providers, sources, and models change. The partial fallback run is excluded.</p></div>
+    </section>
+  </main>
+
+  <footer class="wrap">Kestrel Search benchmark · static report · data embedded for reproducibility</footer>
+
+  <script src="data.js"></script>
+  <script>
+    (() => {
+      "use strict";
+      const source = window.BENCHMARK_DATA;
+      const exportSection = new URLSearchParams(window.location.search).get("export");
+      if (["distributions", "task-quality"].includes(exportSection)) {
+        document.body.classList.add("export-view");
+        document.getElementById(exportSection).classList.add("export-target");
+      }
+      const armNames = { native: "Native Web Search", kestrel: "Kestrel fanout" };
+      const colors = { native: "#e16a3d", kestrel: "#0b7d77" };
+      const taskByIndex = source.tasks.map(([id, label]) => ({ id, label }));
+      const rows = source.trials.map(([arm, taskIndex, trial, elapsed_ms, total_tokens, semantic_score, semantic_pass, failure_stage]) => ({
+        arm, taskIndex, task_id: taskByIndex[taskIndex].id, task: taskByIndex[taskIndex].label,
+        trial, elapsed_ms, total_tokens, semantic_score, semantic_pass, failure_stage
+      }));
+
+      const byArm = arm => rows.filter(row => row.arm === arm);
+      const median = values => {
+        const sorted = [...values].sort((a, b) => a - b);
+        const mid = sorted.length / 2;
+        return (sorted[mid - 1] + sorted[mid]) / 2;
+      };
+      const percentile = (values, p) => {
+        const sorted = [...values].sort((a, b) => a - b);
+        return sorted[Math.round((sorted.length - 1) * p)];
+      };
+      const summary = arm => {
+        const data = byArm(arm);
+        return {
+          passes: data.filter(row => row.semantic_pass).length,
+          passRate: data.filter(row => row.semantic_pass).length / data.length * 100,
+          meanScore: data.reduce((sum, row) => sum + row.semantic_score, 0) / data.length,
+          p50: median(data.map(row => row.elapsed_ms)),
+          p95: percentile(data.map(row => row.elapsed_ms), .95),
+          tokens: median(data.map(row => row.total_tokens)),
+        };
+      };
+      const stats = { native: summary("native"), kestrel: summary("kestrel") };
+      const reduction = (before, after) => (before - after) / before * 100;
+      const compact = value => new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+      const oneDecimal = value => Number(value).toFixed(1);
+
+      document.getElementById("summary-cards").innerHTML = `
+        <article class="card">
+          <div class="card-label">Semantic pass rate</div>
+          <div class="big-number">${oneDecimal(stats.kestrel.passRate)}<small>%</small></div>
+          <div class="card-sub">Kestrel ${stats.kestrel.passes}/24 · Native ${stats.native.passes}/24</div>
+          <span class="delta">1 trial apart</span>
+        </article>
+        <article class="card highlight">
+          <div class="card-label">Median latency</div>
+          <div class="big-number">${oneDecimal(stats.kestrel.p50 / 1000)}<small>s</small></div>
+          <div class="card-sub">Native median: ${oneDecimal(stats.native.p50 / 1000)} seconds</div>
+          <span class="delta">${oneDecimal(reduction(stats.native.p50, stats.kestrel.p50))}% lower</span>
+        </article>
+        <article class="card">
+          <div class="card-label">95th percentile</div>
+          <div class="big-number">${oneDecimal(stats.kestrel.p95 / 1000)}<small>s</small></div>
+          <div class="card-sub">Native p95: ${oneDecimal(stats.native.p95 / 1000)} seconds</div>
+          <span class="delta">${oneDecimal(reduction(stats.native.p95, stats.kestrel.p95))}% lower</span>
+        </article>
+        <article class="card">
+          <div class="card-label">Median model tokens</div>
+          <div class="big-number">${compact(stats.kestrel.tokens)}</div>
+          <div class="card-sub">Native median: ${compact(stats.native.tokens)} tokens</div>
+          <span class="delta">${oneDecimal(reduction(stats.native.tokens, stats.kestrel.tokens))}% fewer</span>
+        </article>`;
+
+      function renderStrip(targetId, field, format, ticks) {
+        const width = 540, height = 205, left = 92, right = 18, top = 18, bottom = 34;
+        const values = rows.map(row => row[field]);
+        const max = Math.max(...values) * 1.06;
+        const x = value => left + value / max * (width - left - right);
+        const y = { native: 72, kestrel: 139 };
+        const tickValues = Array.from({ length: ticks + 1 }, (_, i) => max / ticks * i);
+        const jitter = index => ((index % 5) - 2) * 4;
+        let svg = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Trial distribution for ${field}">`;
+        tickValues.forEach(value => {
+          svg += `<line class="grid-line" x1="${x(value)}" y1="${top}" x2="${x(value)}" y2="${height - bottom}" />`;
+          svg += `<text class="axis-text" x="${x(value)}" y="${height - 10}" text-anchor="middle">${format(value)}</text>`;
+        });
+        ["native", "kestrel"].forEach(arm => {
+          const data = byArm(arm);
+          svg += `<text class="group-text" x="0" y="${y[arm] + 4}">${arm === "native" ? "Native" : "Kestrel"}</text>`;
+          data.forEach((row, index) => {
+            svg += `<circle class="trial-dot" cx="${x(row[field])}" cy="${y[arm] + jitter(index)}" r="5" fill="${colors[arm]}" opacity=".72"><title>${armNames[arm]} · ${row.task} · trial ${row.trial}: ${format(row[field])}</title></circle>`;
+          });
+          const med = median(data.map(row => row[field]));
+          svg += `<line class="median-line" x1="${x(med)}" y1="${y[arm] - 18}" x2="${x(med)}" y2="${y[arm] + 18}" />`;
+        });
+        svg += `</svg>`;
+        document.getElementById(targetId).innerHTML = svg;
+      }
+
+      renderStrip("latency-plot", "elapsed_ms", value => `${Math.round(value / 1000)}s`, 5);
+      renderStrip("tokens-plot", "total_tokens", value => compact(Math.round(value)), 5);
+
+      const dots = (arm, passCount) => Array.from({ length: 3 }, (_, i) => `<i class="pass-dot ${i < passCount ? `on ${arm}` : "off"}"></i>`).join("");
+      const taskHeader = `<div class="task-row header"><div>Research task</div><div>Native passes</div><div>Kestrel passes</div><div>Mean / 8</div></div>`;
+      const taskRows = taskByIndex.map((task, taskIndex) => {
+        const native = rows.filter(row => row.arm === "native" && row.taskIndex === taskIndex);
+        const kestrel = rows.filter(row => row.arm === "kestrel" && row.taskIndex === taskIndex);
+        const np = native.filter(row => row.semantic_pass).length;
+        const kp = kestrel.filter(row => row.semantic_pass).length;
+        const mean = [...native, ...kestrel].reduce((sum, row) => sum + row.semantic_score, 0) / 6;
+        return `<div class="task-row"><div class="task-name">${task.label}</div><div class="pass-dots" aria-label="Native ${np} of 3">${dots("native", np)}</div><div class="pass-dots" aria-label="Kestrel ${kp} of 3">${dots("kestrel", kp)}</div><div class="score">${oneDecimal(mean)}</div></div>`;
+      }).join("");
+      document.getElementById("task-matrix").innerHTML = taskHeader + taskRows;
+
+      document.getElementById("raw-body").innerHTML = rows.map(row => `
+        <tr><td>${armNames[row.arm]}</td><td>${row.task}</td><td class="num">${row.trial}</td><td class="num">${oneDecimal(row.elapsed_ms / 1000)}s</td><td class="num">${row.total_tokens.toLocaleString()}</td><td class="num">${row.semantic_score}/8</td><td class="${row.semantic_pass ? "status-pass" : "status-fail"}">${row.semantic_pass ? "Pass" : "Fail"}</td><td>${row.failure_stage}</td></tr>`).join("");
+
+      const exportRows = rows.map(({ taskIndex, task, ...row }) => ({ arm: armNames[row.arm], ...row }));
+      function download(filename, content, type) {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([content], { type }));
+        link.download = filename;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 0);
+      }
+      document.getElementById("download-json").addEventListener("click", () => download("kestrel-native-benchmark-20260828.json", JSON.stringify({ meta: source.meta, trials: exportRows }, null, 2), "application/json"));
+      document.getElementById("download-csv").addEventListener("click", () => {
+        const fields = ["arm", "task_id", "trial", "elapsed_ms", "total_tokens", "semantic_score", "semantic_pass", "failure_stage"];
+        const csv = [fields.join(","), ...exportRows.map(row => fields.map(field => JSON.stringify(row[field])).join(","))].join("\n");
+        download("kestrel-native-benchmark-20260828.csv", csv, "text/csv");
+      });
+    })();
+  </script>
+</body>
+</html>

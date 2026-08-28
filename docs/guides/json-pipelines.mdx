@@ -1,0 +1,56 @@
+---
+title: "JSON pipelines"
+description: "Use Kestrel Search safely from agents, shell pipelines, and scripts."
+---
+
+# JSON pipelines
+
+Use `--output json` whenever another program will consume the results.
+
+## Keep stdout machine-readable
+
+```bash
+kestrelsearch search "Python security releases" \
+  --output json > results.json
+```
+
+Search, fetch, and ranking progress is written to stderr, so redirecting stdout
+does not mix diagnostics into the JSON document.
+
+To suppress progress messages as well:
+
+```bash
+kestrelsearch search "Python security releases" \
+  --output json 2>/dev/null > results.json
+```
+
+## Select fields with jq
+
+```bash
+kestrelsearch search "Python security releases" --output json \
+  | jq '.[] | {title, url, bm25_score}'
+```
+
+## Reduce downstream context
+
+Limit both the result count and extracted text when sending results to a model:
+
+```bash
+kestrelsearch search "Python security releases" \
+  --top-k 3 \
+  --content-limit 1200 \
+  --output json
+```
+
+## Handle empty results
+
+An empty successful search emits an empty JSON array and exits successfully:
+
+```json
+[]
+```
+
+A failure of every requested search exits with status 1 and writes the error to
+stderr. Partial successes in fanout mode are retained.
+
+See the [output schema](/reference/output-schema) for field definitions.

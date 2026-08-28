@@ -1,0 +1,75 @@
+---
+title: "Troubleshooting"
+description: "Diagnose empty results, missing content, provider failures, and agent discovery."
+---
+
+# Troubleshooting
+
+## The command is not found
+
+Confirm that the installation directory is on your `PATH`:
+
+```bash
+kestrelsearch --help
+```
+
+With uv, inspect installed tools:
+
+```bash
+uv tool list
+```
+
+## A search returns no results
+
+Try another provider or an ordered fallback:
+
+```bash
+kestrelsearch search "your query" \
+  --engine duckduckgo \
+  --engine bing \
+  --engine yahoo \
+  --mode fallback
+```
+
+Provider HTML and throttling can change. Narrow region or recency filters may
+also reduce results.
+
+## Results have null content
+
+`content` is null when:
+
+- `--no-fetch` is active.
+- The URL points to a PDF.
+- The response has an unsupported content type.
+- The response exceeds `--max-response-bytes`.
+- The page times out, rejects the request, or cannot be parsed.
+
+Try a longer timeout or a larger response limit only when the added latency and
+memory are acceptable:
+
+```bash
+kestrelsearch search "your query" \
+  --timeout 20 \
+  --max-response-bytes 4000000
+```
+
+## The agent does not discover the skill
+
+Install it for the intended agent and scope, then restart the agent session:
+
+```bash
+kestrelsearch skill install --agent codex --scope project
+```
+
+See [agent integration](/guides/agent-integration) for installation paths.
+
+## Inspect diagnostic events
+
+Kestrel writes best-effort JSONL diagnostics under:
+
+```text
+~/.kestrel/logs/YYYY-MM-DD/events.jsonl
+```
+
+Events may record retries, provider failures, partial fanout failures, skipped
+responses, and fetch errors. Diagnostic logging never blocks a search result.

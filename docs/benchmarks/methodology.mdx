@@ -1,0 +1,117 @@
+---
+title: "Benchmark methodology"
+description: "Run repeatable native-versus-Kestrel trials and evaluate both arms consistently."
+---
+
+# Benchmark methodology
+
+The benchmark harness compares two Codex configurations on the same task
+fixtures:
+
+- `native`: Codex with native live web search enabled.
+- `kestrel`: Codex without native web search, instructed to use the Kestrel
+  Search skill.
+
+Each trial records wall-clock latency, Codex-reported token usage, the final
+answer, and a benchmark run identifier. Kestrel trials also produce retrieval
+artifacts containing returned URLs, extracted content, BM25 scores, lengths,
+hashes, provenance, and stage timings.
+
+## Run a smoke comparison
+
+Start Phoenix in another terminal:
+
+```bash
+uv run phoenix serve
+```
+
+Then run one trial per arm:
+
+```bash
+uv run python benchmarks/run.py --arm native --trials 1
+uv run python benchmarks/run.py --arm kestrel --trials 1
+uv run python benchmarks/report.py \
+  benchmarks/results/native-*.jsonl \
+  benchmarks/results/kestrel-*.jsonl
+```
+
+Smoke tasks verify wiring; they are not sufficient for quality conclusions.
+
+## Design a comparison
+
+Use the same task file, model, reasoning effort, and trial count for both arms.
+Run multiple trials and report per-task results alongside aggregate latency and
+success measures. Preserve retrieval artifacts so failures can be traced to
+retrieval or answer synthesis.
+
+A task fixture is one JSON object per line:
+
+```json
+{
+  "id": "unique-task-id",
+  "prompt": "The task handed to Codex.",
+  "tags": ["documentation", "current"],
+  "expected": {
+    "must_include": ["optional regression check"],
+    "reference_urls": ["https://example.com"]
+  }
+}
+```
+
+Keep expected answers and grading rules separate from the prompt.
+
+## Evaluate answer quality
+
+Inspect the task, final answer, expected fields, and retrieval evidence for each
+trial. Apply the same 0–2 rubric to both arms:
+
+| Dimension | 0 | 1 | 2 |
+| --- | --- | --- | --- |
+| Correctness | Materially wrong | Partly correct or uncertain | Correct and specific |
+| Grounding | Unsupported or contradicted | Partly supported | Claims supported by retrieved sources |
+| Source quality | No source or low-quality source | Mixed authority | Primary or official sources where available |
+| Completeness | Misses a key part | Covers most of the task | Covers every material part concisely |
+
+Set `pass` to true only when correctness and grounding are each at least 1, the
+total is at least 6/8, and no material claim contradicts its cited source.
+
+Prefer current primary sources over stale expected answers. Record a stale
+fixture rather than marking an accurate current answer wrong. Distinguish
+retrieval failures from synthesis failures by checking whether the needed fact
+appears in the retrieval artifact or trace.
+
+The repository's `SKILLS.md` remains the authoritative evaluation procedure and
+defines the required JSONL review record.
+
+## Run a larger suite
+
+```bash
+uv run python benchmarks/run.py \
+  --tasks benchmarks/tasks/web_retrieval.jsonl \
+  --arm native \
+  --trials 5
+```
+
+For a minimally robust comparison, use at least five trials per task and arm,
+report task-level results as well as aggregates, and retain frozen retrieval
+artifacts for review.
+
+## Sample DeepSearchQA
+
+```bash
+uv run python benchmarks/run.py \
+  --tasks benchmarks/data/DSQA-full.csv \
+  --sample-size 20 \
+  --seed 42 \
+  --arm native \
+  --trials 3
+```
+
+Use the identical sample size and seed for both arms. The CSV path requires an
+explicit sample size so the full dataset is not run accidentally.
+
+## Inspect traces
+
+Phoenix correlates `kestrel.search`, `kestrel.fetch`, and `kestrel.rank` spans
+with the benchmark run identifier. Open `http://127.0.0.1:6006` while Phoenix is
+running to inspect them.

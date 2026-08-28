@@ -9,11 +9,40 @@
     "groups": [
       {
         "group": "Get started",
-        "pages": ["index", "installation"]
+        "pages": ["index", "installation", "quickstart"]
       },
       {
         "group": "Guides",
-        "pages": ["guides/agent-integration", "guides/search-options"]
+        "pages": [
+          "guides/agent-integration",
+          "guides/search-options",
+          "guides/multi-query-search",
+          "guides/json-pipelines"
+        ]
+      },
+      {
+        "group": "Concepts",
+        "pages": [
+          "concepts/search-pipeline",
+          "concepts/ranking-and-fairness"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/cli",
+          "reference/output-schema",
+          "reference/limitations",
+          "troubleshooting"
+        ]
+      },
+      {
+        "group": "Benchmarks",
+        "pages": ["benchmarks", "benchmarks/methodology"]
+      },
+      {
+        "group": "Contributing",
+        "pages": ["development"]
       }
     ]
   }

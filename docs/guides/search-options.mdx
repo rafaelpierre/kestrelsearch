@@ -69,8 +69,36 @@ kestrelsearch search "Rust ownership" --output json
 kestrelsearch search "climate change" --top-k 3
 ```
 
+## Tune retrieval resources
+
+Search requests, page downloads, and HTML parsing have separate concurrency
+limits:
+
+```bash
+kestrelsearch search "machine learning" \
+  --search-concurrency 4 \
+  --concurrency 8 \
+  --parse-concurrency 4
+```
+
+Bound the number and size of fetched pages:
+
+```bash
+kestrelsearch search "machine learning" \
+  --top-k 5 \
+  --fetch-candidates 10 \
+  --max-response-bytes 1000000 \
+  --content-limit 3000
+```
+
+`--fetch-candidates` defaults to three times `--top-k`. Increasing it may
+improve ranking recall but also increases network, parsing, and downstream
+token costs.
+
 Run the following command for the complete option reference:
 
 ```bash
 kestrelsearch search --help
 ```
+
+See the [CLI reference](/reference/cli) for every option and default.

@@ -1,0 +1,49 @@
+---
+title: "Output schema"
+description: "Fields returned by Kestrel Search JSON output."
+---
+
+# Output schema
+
+`--output json` returns an array of result objects.
+
+```json
+[
+  {
+    "title": "Example page",
+    "url": "https://example.com/page",
+    "display_url": "example.com/page",
+    "snippet": "Search-result summary",
+    "content": "Source: https://example.com/page\n\nExtracted page text",
+    "bm25_score": 1.42,
+    "engine": "duckduckgo",
+    "query": "example query",
+    "engine_rank": 1,
+    "sources": [
+      {
+        "engine": "duckduckgo",
+        "query": "example query",
+        "rank": 1
+      }
+    ]
+  }
+]
+```
+
+## Fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `title` | string | Result title reported by the search provider. |
+| `url` | string | Destination URL. |
+| `display_url` | string | Short URL displayed by the provider. |
+| `snippet` | string | Search-result snippet. |
+| `content` | string or null | Extracted page text prefixed by its source URL. It is null when fetching is disabled, skipped, or unsuccessful. |
+| `bm25_score` | number, optional | Local relevance score added when fetching and ranking are enabled. |
+| `engine` | string | Provider that supplied the retained result. |
+| `query` | string | Query that supplied the retained result. |
+| `engine_rank` | integer | Position in the originating provider result list. |
+| `sources` | array | Every provider and query occurrence merged into the canonical URL. |
+
+Field presence can vary with command options. Consumers should tolerate a null
+`content` value and a missing `bm25_score`.

@@ -1,0 +1,55 @@
+---
+title: "CLI reference"
+description: "Complete command and option reference for Kestrel Search."
+---
+
+# CLI reference
+
+## Search command
+
+```text
+kestrelsearch search [OPTIONS] QUERY
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `-q, --query QUERY` | — | Add another query. Repeat as needed. |
+| `-e, --engine ENGINE` | `duckduckgo` | Choose `duckduckgo`, `bing`, or `yahoo`. Repeat for multiple engines. |
+| `--mode MODE` | `fallback` | Use `fallback` or `fanout`. |
+| `--search-concurrency N` | `5` | Maximum concurrent search-provider requests. |
+| `-k, --top-k N` | `5` | Number of final results. |
+| `--fetch-candidates N` | `3 × top-k` | Maximum pages fetched before ranking. |
+| `--fetch, --no-fetch` | fetch | Enable or disable page retrieval. |
+| `--rank, --no-rank` | rank | Enable or disable BM25 re-ranking. Requires fetching. |
+| `--region CODE` | all regions | Provider region such as `us-en` or `uk-en`. |
+| `--time-filter VALUE` | `any` | Use `any`, `d`, `w`, `m`, or `y`. Bing currently ignores this option. |
+| `--content-limit CHARS` | `2000` | Maximum extracted characters per page. |
+| `--max-response-bytes BYTES` | `2000000` | Maximum accepted response body per page. |
+| `--timeout SECS` | `10` | Per-page fetch timeout. |
+| `--concurrency N` | `5` | Maximum concurrent page downloads. |
+| `--parse-concurrency N` | `2` | Maximum concurrent HTML parsing jobs. |
+| `--output FORMAT` | `text` | Return `text` or `json`. |
+| `-h, --help` | — | Show command help. |
+
+## Skill commands
+
+Install the generated agent skill:
+
+```text
+kestrelsearch skill install [OPTIONS]
+```
+
+| Option | Description |
+| --- | --- |
+| `--agent AGENT` | Choose `claude`, `vscode`, `codex`, `all`, or legacy `both`. |
+| `--scope SCOPE` | Choose `project` or `global`. |
+| `--force` | Replace an existing `SKILL.md` without prompting. |
+
+Remove recorded skill installations interactively:
+
+```bash
+kestrelsearch skill uninstall
+```
+
+Run `kestrelsearch --help` or `kestrelsearch search --help` to check the
+reference for your installed version.

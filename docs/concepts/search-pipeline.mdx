@@ -1,0 +1,50 @@
+---
+title: "Search pipeline"
+description: "How Kestrel searches, fetches, extracts, ranks, and returns web results."
+---
+
+# Search pipeline
+
+Kestrel Search uses a bounded five-stage pipeline.
+
+## 1. Search
+
+Queries are sent to DuckDuckGo, Bing, or Yahoo HTML search endpoints. Search
+connections are reused for the duration of the command, and transient timeouts,
+network failures, HTTP 408, HTTP 429, and server errors are retried up to three
+attempts with bounded exponential jitter.
+
+## 2. Merge and deduplicate
+
+Provider result lists are merged round-robin. URLs are canonicalized for
+deduplication by normalizing their host and path and removing common tracking
+parameters. The original destination URL remains in the returned result.
+
+When the same URL appears more than once, Kestrel retains every occurrence in
+the result's `sources` array.
+
+## 3. Fetch candidates
+
+Unless `--no-fetch` is set, Kestrel fetches a bounded prefix of the merged
+results. The default candidate pool is three times `--top-k`.
+
+Downloads use a shared HTTP/2 client and stream response bodies before parsing.
+Responses larger than `--max-response-bytes` and unsupported content types are
+skipped. PDF URLs are not fetched.
+
+## 4. Extract content
+
+HTML parsing runs in worker threads under a separate concurrency limit. Kestrel
+removes common navigation, advertising, form, header, footer, and sidebar
+elements, then extracts headings, paragraphs, and meaningful list items from a
+likely main-content container.
+
+The cleaned result is truncated to `--content-limit` characters.
+
+## 5. Rank and return
+
+With fetching and ranking enabled, BM25 scores the extracted content against its
+originating query. Results are interleaved across query groups, truncated to
+`--top-k`, and rendered as text or JSON.
+
+Kestrel Search does not persistently cache search responses or fetched pages.

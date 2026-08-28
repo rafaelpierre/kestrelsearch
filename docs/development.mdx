@@ -1,0 +1,59 @@
+---
+title: "Development"
+description: "Set up a local checkout, run tests, and contribute changes."
+---
+
+# Development
+
+## Set up the repository
+
+```bash
+git clone https://github.com/rafaelpierre/kestrelsearch.git
+cd kestrelsearch
+uv sync
+```
+
+Run the local package:
+
+```bash
+uv run kestrelsearch search "test"
+```
+
+## Run tests
+
+```bash
+uv run pytest
+```
+
+The test suite enforces at least 90% coverage for the `kestrelsearch` package.
+
+## Install commit hooks
+
+```bash
+uv run prek install
+```
+
+The hooks run Ruff formatting, Ruff linting, ty, and Complexipy checks against
+the relevant changed Python files.
+
+Run the checks manually:
+
+```bash
+# Files changed in the current HEAD commit
+uv run prek run --last-commit
+
+# Every tracked file
+uv run prek run --all-files
+```
+
+## Project layout
+
+| Path | Purpose |
+| --- | --- |
+| `src/kestrelsearch/cli.py` | CLI orchestration and skill management. |
+| `src/kestrelsearch/search.py` | Provider requests, retries, merging, and URL deduplication. |
+| `src/kestrelsearch/fetcher.py` | Bounded downloads and HTML extraction. |
+| `src/kestrelsearch/ranking.py` | BM25 scoring and query-group interleaving. |
+| `src/kestrelsearch/benchmarking.py` | Optional trace spans and retrieval artifacts. |
+| `tests/` | Unit and CLI tests. |
+| `benchmarks/` | Native-versus-Kestrel evaluation tooling. |

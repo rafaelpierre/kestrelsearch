@@ -1,0 +1,60 @@
+---
+title: "Multi-query search"
+description: "Search multiple queries and providers with fanout or ordered fallback."
+---
+
+# Multi-query search
+
+Kestrel Search accepts repeated queries and search engines. It normalizes and
+deduplicates both lists while preserving their order.
+
+## Add related queries
+
+The positional argument is the primary query. Repeat `--query` for related
+queries:
+
+```bash
+kestrelsearch search "python typing" \
+  --query "pyright documentation" \
+  --query "mypy release notes"
+```
+
+## Choose fanout mode
+
+Fanout runs every query and engine pair. This maximizes coverage and tolerates
+partial provider failures.
+
+```bash
+kestrelsearch search "python typing" \
+  --query "pyright documentation" \
+  --engine duckduckgo \
+  --engine bing \
+  --mode fanout \
+  --search-concurrency 4
+```
+
+The example can run up to four query-provider requests concurrently.
+
+## Choose fallback mode
+
+Fallback treats the engines as an ordered preference list. For each query,
+Kestrel tries the next engine only when the previous engine fails.
+
+```bash
+kestrelsearch search "python typing" \
+  --engine duckduckgo \
+  --engine bing \
+  --engine yahoo \
+  --mode fallback
+```
+
+Different queries still run concurrently in fallback mode.
+
+## How results are combined
+
+Kestrel Search round-robins the result lists so one query or engine does not
+occupy every early candidate slot. Canonically equivalent URLs are merged, and
+their contributing query and engine occurrences are retained in `sources`.
+
+When ranking is enabled, results are ranked within their originating-query
+groups and interleaved again. See [ranking and fairness](/concepts/ranking-and-fairness).
