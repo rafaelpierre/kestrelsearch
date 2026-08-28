@@ -84,6 +84,7 @@ Each element in the returned array contains:
 ## Notes
 
 - This `SKILL.md` is compatible with Claude Code, Codex, and GitHub Copilot in VS Code.
+- Supply a query either as the positional `QUERY` or with repeatable `-q/--query` options. Both forms can be combined.
 - Progress logs go to **stderr**; clean JSON goes to **stdout**.
   Pipe stdout for programmatic use: `kestrelsearch search "..." --output json 2>/dev/null`
 - PDFs are automatically skipped during content fetching.

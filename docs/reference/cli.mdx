@@ -8,12 +8,15 @@ description: "Complete command and option reference for Kestrel Search."
 ## Search command
 
 ```text
-kestrelsearch search [OPTIONS] QUERY
+kestrelsearch search [OPTIONS] [QUERY]
 ```
+
+Supply at least one query, either as the positional `QUERY` or with one or more
+`-q, --query` options. Both forms can be combined.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `-q, --query QUERY` | — | Add another query. Repeat as needed. |
+| `-q, --query QUERY` | — | Add a query. Repeat as needed; the positional query is optional when this is used. |
 | `-e, --engine ENGINE` | `duckduckgo` | Choose `duckduckgo`, `bing`, or `yahoo`. Repeat for multiple engines. |
 | `--mode MODE` | `fallback` | Use `fallback` or `fanout`. |
 | `--search-concurrency N` | `5` | Maximum concurrent search-provider requests. |

@@ -13,6 +13,8 @@ def test_generate_skill_contains_live_cli_details():
     assert "--time-filter" in skill
     assert "--max-response-bytes" in skill
     assert "--parse-concurrency" in skill
+    assert "may be used without QUERY" in skill
+    assert "positional `QUERY` or with repeatable `-q/--query`" in skill
     assert "three times `--top-k`" in skill
 
 

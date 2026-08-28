@@ -126,6 +126,39 @@ def test_search_command_passes_multi_engine_fanout_options(monkeypatch):
     assert seen["max_concurrency"] == 2
 
 
+def test_search_command_accepts_only_query_options(monkeypatch):
+    seen = {}
+
+    async def search_many(queries, **kwargs):
+        seen["queries"] = queries
+        return []
+
+    monkeypatch.setattr(cli, "async_search_many", search_many)
+    result = CliRunner().invoke(
+        cli.main,
+        [
+            "search",
+            "-q",
+            "first",
+            "-q",
+            "second",
+            "--no-fetch",
+            "--output",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert seen["queries"] == ("first", "second")
+
+
+def test_search_command_requires_at_least_one_query():
+    result = CliRunner().invoke(cli.main, ["search"])
+
+    assert result.exit_code == 2
+    assert "Provide at least one query as QUERY or with -q/--query" in result.stderr
+
+
 def test_search_command_bounds_fetch_candidates(monkeypatch):
     results = [
         {

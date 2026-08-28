@@ -108,14 +108,14 @@ def _render_text_results(results: list[dict], query: str) -> None:
 
 
 @main.command("search")
-@click.argument("query")
+@click.argument("query", required=False)
 @click.option(
     "additional_queries",
     "-q",
     "--query",
     multiple=True,
     metavar="QUERY",
-    help="Additional query to run. Repeat for multiple queries.",
+    help="Query to run. Repeat for multiple queries; may be used without QUERY.",
 )
 @click.option(
     "engines",
@@ -257,8 +257,13 @@ def search_cmd(
       kestrelsearch search "climate news" --time-filter w --region us-en
       kestrelsearch search "react hooks" --content-limit 1000 --timeout 5
       kestrelsearch search "python typing" -q "pyright docs" -e duckduckgo -e bing --mode fanout
+      kestrelsearch search -q "python typing" -q "pyright docs" --mode fanout
     """
-    queries = (query, *additional_queries)
+    queries = ((query,) if query is not None else ()) + additional_queries
+    if not queries:
+        raise click.UsageError(
+            "Provide at least one query as QUERY or with -q/--query."
+        )
     query_label = " | ".join(queries)
     click.echo(
         f"[kestrelsearch] Searching {len(queries)} query(s) with "

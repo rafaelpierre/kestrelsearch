@@ -10,11 +10,19 @@ deduplicates both lists while preserving their order.
 
 ## Add related queries
 
-The positional argument is the primary query. Repeat `--query` for related
-queries:
+Use a positional primary query and repeat `--query` for related queries:
 
 ```bash
 kestrelsearch search "python typing" \
+  --query "pyright documentation" \
+  --query "mypy release notes"
+```
+
+You can also use `--query` for every query; a positional query is not required:
+
+```bash
+kestrelsearch search \
+  --query "python typing" \
   --query "pyright documentation" \
   --query "mypy release notes"
 ```
