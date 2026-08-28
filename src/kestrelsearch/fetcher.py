@@ -1,13 +1,21 @@
+"""Bounded asynchronous page retrieval and off-loop HTML extraction."""
+
 import asyncio
 import re
 from html import unescape
+from typing import Final
 
 import httpx
 from bs4 import BeautifulSoup, Tag
 from fake_useragent import UserAgent
 
+from .logging_utils import log_event
+
 # Single UA instance — instantiation is expensive
 _UA = UserAgent()
+
+DEFAULT_MAX_RESPONSE_BYTES: Final = 2_000_000
+_SUPPORTED_CONTENT_TYPES = ("text/html", "application/xhtml+xml", "text/plain")
 
 _CLUTTER_PATTERNS = [
     "menu",
@@ -118,14 +126,71 @@ async def _fetch_one(
     semaphore: asyncio.Semaphore,
     timeout: float,
     content_limit: int,
+    parse_semaphore: asyncio.Semaphore | None = None,
+    max_response_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
 ) -> str | None:
-    async with semaphore:
-        try:
-            response = await client.get(url, timeout=timeout, follow_redirects=True)
+    """Download one bounded text response, then extract it off the event loop.
+
+    The network semaphore is released before parsing starts. This keeps slow DOM
+    construction from occupying a connection slot and lets other responses make
+    progress while extraction runs in a worker thread. ``parse_semaphore`` is
+    optional for direct callers; :func:`fetch_all` always supplies one.
+    """
+    try:
+        async with (
+            semaphore,
+            client.stream(
+                "GET", url, timeout=timeout, follow_redirects=True
+            ) as response,
+        ):
             response.raise_for_status()
-            return _parse_content(response.text, content_limit)
-        except httpx.HTTPError:
-            return None
+            content_type = response.headers.get("content-type", "").lower()
+            if content_type and not content_type.startswith(_SUPPORTED_CONTENT_TYPES):
+                log_event(
+                    "fetch_skipped",
+                    url=url,
+                    reason="unsupported_content_type",
+                    content_type=content_type,
+                )
+                return None
+
+            # Content-Length is only an early rejection hint. The streaming
+            # check remains authoritative for missing or incorrect headers.
+            declared_size = response.headers.get("content-length")
+            if declared_size and int(declared_size) > max_response_bytes:
+                log_event(
+                    "fetch_skipped",
+                    url=url,
+                    reason="response_too_large",
+                    response_bytes=int(declared_size),
+                    max_response_bytes=max_response_bytes,
+                )
+                return None
+
+            body = bytearray()
+            async for chunk in response.aiter_bytes():
+                body.extend(chunk)
+                if len(body) > max_response_bytes:
+                    log_event(
+                        "fetch_skipped",
+                        url=url,
+                        reason="response_too_large",
+                        response_bytes=len(body),
+                        max_response_bytes=max_response_bytes,
+                    )
+                    return None
+            encoding = response.encoding or "utf-8"
+
+        html = body.decode(encoding, errors="replace")
+        if parse_semaphore is None:
+            return await asyncio.to_thread(_parse_content, html, content_limit)
+        async with parse_semaphore:
+            return await asyncio.to_thread(_parse_content, html, content_limit)
+    except (httpx.HTTPError, UnicodeError, ValueError) as exc:
+        log_event(
+            "fetch_failed", url=url, error_type=type(exc).__name__, error=str(exc)
+        )
+        return None
 
 
 async def fetch_all(
@@ -133,20 +198,39 @@ async def fetch_all(
     timeout: float = 10.0,
     content_limit: int = 2000,
     max_concurrency: int = 5,
+    parse_concurrency: int = 2,
+    max_response_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
 ) -> list[str | None]:
-    """Fetch and parse multiple URLs concurrently over a shared HTTP/2 client.
+    """Fetch and parse URLs over a shared client with separate resource limits.
+
+    Response bodies are streamed and bounded before decoding or DOM creation.
+    Network concurrency limits open requests and buffered bodies, while parse
+    concurrency independently limits CPU- and memory-intensive extraction work.
 
     Args:
         urls: List of page URLs to fetch.
         timeout: Per-request HTTP timeout in seconds.
         content_limit: Maximum characters to extract per page.
         max_concurrency: Maximum simultaneous in-flight requests.
+        parse_concurrency: Maximum simultaneous HTML extraction jobs.
+        max_response_bytes: Maximum response body size accepted per page.
 
     Returns:
         List of extracted text strings (or None for failed fetches),
         in the same order as `urls`.
+
+    Raises:
+        ValueError: If any concurrency or response-size limit is less than one.
     """
+    if max_concurrency < 1:
+        raise ValueError("max_concurrency must be at least 1")
+    if parse_concurrency < 1:
+        raise ValueError("parse_concurrency must be at least 1")
+    if max_response_bytes < 1:
+        raise ValueError("max_response_bytes must be at least 1")
+
     semaphore = asyncio.Semaphore(max_concurrency)
+    parse_semaphore = asyncio.Semaphore(parse_concurrency)
     async with httpx.AsyncClient(
         http2=True,
         headers={"User-Agent": _UA.random},
@@ -155,7 +239,15 @@ async def fetch_all(
         return list(
             await asyncio.gather(
                 *[
-                    _fetch_one(url, client, semaphore, timeout, content_limit)
+                    _fetch_one(
+                        url,
+                        client,
+                        semaphore,
+                        timeout,
+                        content_limit,
+                        parse_semaphore,
+                        max_response_bytes,
+                    )
                     for url in urls
                 ]
             )

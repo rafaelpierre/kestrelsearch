@@ -1,6 +1,7 @@
 import asyncio
 
 import httpx
+import pytest
 
 from kestrelsearch import fetcher
 
@@ -87,3 +88,76 @@ def test_fetch_all_uses_mocked_async_client(monkeypatch):
 
     assert len(results) == 2
     assert all(result is not None for result in results)
+
+
+def test_fetch_one_rejects_unsupported_and_oversized_responses(monkeypatch):
+    monkeypatch.setattr(fetcher, "log_event", lambda *args, **kwargs: None)
+
+    class OversizedStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b"x" * 60
+            yield b"x" * 60
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/binary":
+            return httpx.Response(
+                200,
+                content=b"not html",
+                headers={"content-type": "application/octet-stream"},
+                request=request,
+            )
+        if request.url.path == "/streamed":
+            return httpx.Response(
+                200,
+                stream=OversizedStream(),
+                headers={"content-type": "text/html"},
+                request=request,
+            )
+        return httpx.Response(
+            200,
+            content=b"x" * 101,
+            headers={"content-length": "101", "content-type": "text/html"},
+            request=request,
+        )
+
+    async def run() -> tuple[str | None, str | None, str | None]:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            semaphore = asyncio.Semaphore(2)
+            return await asyncio.gather(
+                fetcher._fetch_one(
+                    "https://example.test/binary",
+                    client,
+                    semaphore,
+                    1,
+                    500,
+                    max_response_bytes=100,
+                ),
+                fetcher._fetch_one(
+                    "https://example.test/large",
+                    client,
+                    semaphore,
+                    1,
+                    500,
+                    max_response_bytes=100,
+                ),
+                fetcher._fetch_one(
+                    "https://example.test/streamed",
+                    client,
+                    semaphore,
+                    1,
+                    500,
+                    max_response_bytes=100,
+                ),
+            )
+
+    assert asyncio.run(run()) == [None, None, None]
+
+
+def test_fetch_all_validates_concurrency_and_response_limit():
+    for kwargs in (
+        {"max_concurrency": 0},
+        {"parse_concurrency": 0},
+        {"max_response_bytes": 0},
+    ):
+        with pytest.raises(ValueError):
+            asyncio.run(fetcher.fetch_all([], **kwargs))

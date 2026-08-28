@@ -11,6 +11,9 @@ def test_generate_skill_contains_live_cli_details():
     assert "kestrelsearch search" in skill
     assert "Codex" in skill
     assert "--time-filter" in skill
+    assert "--max-response-bytes" in skill
+    assert "--parse-concurrency" in skill
+    assert "three times `--top-k`" in skill
 
 
 def test_example_and_option_helpers_handle_missing_values():

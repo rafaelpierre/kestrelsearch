@@ -2,6 +2,6 @@
 
 from .fetcher import fetch_all
 from .ranking import rank_results
-from .search import search
+from .search import async_search, async_search_many, search
 
-__all__ = ["search", "fetch_all", "rank_results"]
+__all__ = ["search", "async_search", "async_search_many", "fetch_all", "rank_results"]

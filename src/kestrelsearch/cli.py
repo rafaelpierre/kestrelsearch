@@ -1,11 +1,13 @@
+"""Command-line orchestration for search, enrichment, ranking, and skill setup."""
+
 import asyncio
 import json
 import sys
+import time
 from contextlib import suppress
 from pathlib import Path
 
 import click
-import httpx
 
 from ._config import (
     CONFIG_PATH,
@@ -14,9 +16,10 @@ from ._config import (
     remove_installation,
 )
 from ._skill_content import generate_skill_md
-from .fetcher import fetch_all
-from .ranking import rank_results
-from .search import search
+from .benchmarking import span, write_artifact
+from .fetcher import DEFAULT_MAX_RESPONSE_BYTES, fetch_all
+from .ranking import rank_results_by_query
+from .search import ENGINE_REGISTRY, SearchError, async_search_many
 
 _SKILL_NAME = "kestrelsearch"
 
@@ -40,9 +43,18 @@ def main():
 
 
 def _fetch_page_content(
-    results: list[dict], concurrency: int, content_limit: int, timeout: float
+    results: list[dict],
+    concurrency: int,
+    parse_concurrency: int,
+    content_limit: int,
+    max_response_bytes: int,
+    timeout: float,
 ) -> None:
-    """Fetch eligible results and attach extracted content in place."""
+    """Fetch eligible results and attach content without changing result order.
+
+    Indices are retained because PDFs are skipped and ``fetch_all`` returns only
+    the fetchable subset. Stable ordering is required by later fair interleaving.
+    """
     fetchable = [
         (index, result["url"])
         for index, result in enumerate(results)
@@ -58,6 +70,8 @@ def _fetch_page_content(
             timeout=timeout,
             content_limit=content_limit,
             max_concurrency=concurrency,
+            parse_concurrency=parse_concurrency,
+            max_response_bytes=max_response_bytes,
         )
     )
     for (index, url), content in zip(fetchable, fetched, strict=True):
@@ -79,7 +93,12 @@ def _render_text_results(results: list[dict], query: str) -> None:
         score = (
             f"  [BM25: {result['bm25_score']:.2f}]" if "bm25_score" in result else ""
         )
-        click.echo(f"{index}. {result['title']}{score}")
+        source = (
+            f"  [{result['engine']}: {result['query']}]"
+            if result.get("engine") and result.get("query")
+            else ""
+        )
+        click.echo(f"{index}. {result['title']}{score}{source}")
         click.echo(f"   {result['url']}")
         click.echo(f"   {result['snippet']}")
         if result.get("content"):
@@ -91,12 +110,52 @@ def _render_text_results(results: list[dict], query: str) -> None:
 @main.command("search")
 @click.argument("query")
 @click.option(
+    "additional_queries",
+    "-q",
+    "--query",
+    multiple=True,
+    metavar="QUERY",
+    help="Additional query to run. Repeat for multiple queries.",
+)
+@click.option(
+    "engines",
+    "-e",
+    "--engine",
+    multiple=True,
+    default=("duckduckgo",),
+    show_default=True,
+    type=click.Choice(list(ENGINE_REGISTRY), case_sensitive=False),
+    help="Search engine. Repeat to set fanout engines or fallback order.",
+)
+@click.option(
+    "--mode",
+    default="fallback",
+    show_default=True,
+    type=click.Choice(["fallback", "fanout"], case_sensitive=False),
+    help="Use engines in order on failure, or run every engine/query pair.",
+)
+@click.option(
+    "--search-concurrency",
+    default=5,
+    show_default=True,
+    type=click.IntRange(min=1),
+    metavar="N",
+    help="Maximum concurrent search-engine requests.",
+)
+@click.option(
     "-k",
     "--top-k",
     default=5,
     show_default=True,
+    type=click.IntRange(min=1),
     metavar="N",
     help="Number of top results to return.",
+)
+@click.option(
+    "--fetch-candidates",
+    type=click.IntRange(min=1),
+    metavar="N",
+    help="Maximum candidates to fetch before ranking (default: 3 x top-k).",
 )
 @click.option(
     "--fetch/--no-fetch",
@@ -114,26 +173,36 @@ def _render_text_results(results: list[dict], query: str) -> None:
     "--region",
     default="",
     metavar="CODE",
-    help="DuckDuckGo region code (e.g. us-en, uk-en). Defaults to all regions.",
+    help="Provider region code (e.g. us-en, uk-en). Defaults to all regions.",
 )
 @click.option(
     "--time-filter",
     default="any",
     show_default=True,
     type=click.Choice(["any", "d", "w", "m", "y"], case_sensitive=False),
-    help="Restrict by recency: any, d (day), w (week), m (month), y (year).",
+    help="Restrict by recency: any, d, w, m, y. Bing currently ignores this filter.",
 )
 @click.option(
     "--content-limit",
     default=2000,
     show_default=True,
+    type=click.IntRange(min=1),
     metavar="CHARS",
     help="Maximum characters to extract per fetched page.",
+)
+@click.option(
+    "--max-response-bytes",
+    default=DEFAULT_MAX_RESPONSE_BYTES,
+    show_default=True,
+    type=click.IntRange(min=1),
+    metavar="BYTES",
+    help="Maximum response body accepted per fetched page.",
 )
 @click.option(
     "--timeout",
     default=10.0,
     show_default=True,
+    type=click.FloatRange(min=0.001),
     metavar="SECS",
     help="HTTP timeout in seconds when fetching pages.",
 )
@@ -141,8 +210,17 @@ def _render_text_results(results: list[dict], query: str) -> None:
     "--concurrency",
     default=5,
     show_default=True,
+    type=click.IntRange(min=1),
     metavar="N",
     help="Max concurrent HTTP requests when fetching pages.",
+)
+@click.option(
+    "--parse-concurrency",
+    default=2,
+    show_default=True,
+    type=click.IntRange(min=1),
+    metavar="N",
+    help="Maximum concurrent HTML parsing jobs.",
 )
 @click.option(
     "--output",
@@ -153,17 +231,24 @@ def _render_text_results(results: list[dict], query: str) -> None:
 )
 def search_cmd(
     query,
+    additional_queries,
+    engines,
+    mode,
+    search_concurrency,
     top_k,
+    fetch_candidates,
     fetch,
     rank,
     region,
     time_filter,
     content_limit,
+    max_response_bytes,
     timeout,
     concurrency,
+    parse_concurrency,
     output,
 ):
-    """Search DuckDuckGo and return ranked results.
+    """Search one or more engines and return ranked results.
 
     \b
     Examples:
@@ -171,16 +256,51 @@ def search_cmd(
       kestrelsearch search "rust ownership" --no-fetch --output json
       kestrelsearch search "climate news" --time-filter w --region us-en
       kestrelsearch search "react hooks" --content-limit 1000 --timeout 5
+      kestrelsearch search "python typing" -q "pyright docs" -e duckduckgo -e bing --mode fanout
     """
-    click.echo(f"[kestrelsearch] Searching: '{query}'", err=True)
+    queries = (query, *additional_queries)
+    query_label = " | ".join(queries)
+    click.echo(
+        f"[kestrelsearch] Searching {len(queries)} query(s) with "
+        f"{', '.join(engines)} ({mode})...",
+        err=True,
+    )
 
+    timings_ms: dict[str, int] = {}
+    search_started = time.perf_counter()
     try:
-        results = search(query, region=region, time_filter=time_filter)
-    except httpx.HTTPError as exc:
+        with span(
+            "kestrel.search",
+            {
+                "kestrel.query_count": len(queries),
+                "kestrel.engine_count": len(engines),
+                "kestrel.search_mode": mode,
+            },
+        ):
+            results = asyncio.run(
+                async_search_many(
+                    queries,
+                    engines=engines,
+                    mode=mode,
+                    region=region,
+                    time_filter=time_filter,
+                    max_concurrency=search_concurrency,
+                )
+            )
+    except (SearchError, ValueError) as exc:
         click.echo(f"[kestrelsearch] Search failed: {exc}", err=True)
         sys.exit(1)
 
+    timings_ms["search"] = round((time.perf_counter() - search_started) * 1000)
     if not results:
+        write_artifact(
+            query_label,
+            [],
+            timings_ms,
+            queries=list(queries),
+            engines=list(engines),
+            mode=mode,
+        )
         click.echo("[kestrelsearch] No results found.", err=True)
         click.echo("[]" if output == "json" else "No results found.")
         sys.exit(0)
@@ -188,20 +308,51 @@ def search_cmd(
     click.echo(f"[kestrelsearch] Got {len(results)} results.", err=True)
 
     if fetch:
-        _fetch_page_content(results, concurrency, content_limit, timeout)
+        # Search results are already round-robin merged, so taking a prefix keeps
+        # query/engine diversity while bounding the expensive enrichment stage.
+        candidate_limit = fetch_candidates or top_k * 3
+        if len(results) > candidate_limit:
+            click.echo(
+                f"[kestrelsearch] Fetching the first {candidate_limit} candidates "
+                f"before ranking (from {len(results)} search results).",
+                err=True,
+            )
+            results = results[:candidate_limit]
+        fetch_started = time.perf_counter()
+        with span("kestrel.fetch", {"kestrel.result_count": len(results)}):
+            _fetch_page_content(
+                results,
+                concurrency,
+                parse_concurrency,
+                content_limit,
+                max_response_bytes,
+                timeout,
+            )
+        timings_ms["fetch"] = round((time.perf_counter() - fetch_started) * 1000)
 
     if fetch and rank:
         click.echo("[kestrelsearch] Ranking with BM25...", err=True)
-        results = rank_results(results, query)
+        rank_started = time.perf_counter()
+        with span("kestrel.rank", {"kestrel.result_count": len(results)}):
+            results = rank_results_by_query(results, queries)
+        timings_ms["rank"] = round((time.perf_counter() - rank_started) * 1000)
 
     top_results = results[:top_k]
+    write_artifact(
+        query_label,
+        top_results,
+        timings_ms,
+        queries=list(queries),
+        engines=list(engines),
+        mode=mode,
+    )
     click.echo(f"[kestrelsearch] Returning top {len(top_results)} results.", err=True)
 
     if output == "json":
         click.echo(json.dumps(top_results, ensure_ascii=False, indent=2))
         return
 
-    _render_text_results(top_results, query)
+    _render_text_results(top_results, query_label)
 
 
 @main.group("skill", context_settings={"help_option_names": ["-h", "--help"]})

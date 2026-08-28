@@ -22,7 +22,7 @@ _SKILL_TEMPLATE = """\
 ---
 name: kestrelsearch
 description: >
-  Lightweight web search via DuckDuckGo with BM25 relevance ranking.
+  Lightweight multi-engine web search with BM25 relevance ranking.
   Use when asked to search the web, look something up, find recent information,
   research a topic, or browse the internet.
   Trigger phrases: search the web, look up, find information about, google,
@@ -72,10 +72,14 @@ Each element in the returned array contains:
 |-------|------|-------------|
 | `title` | string | Page title |
 | `url` | string | Full canonical URL |
-| `display_url` | string | Shortened display URL shown by DuckDuckGo |
-| `snippet` | string | DuckDuckGo result snippet |
+| `display_url` | string | Shortened URL shown by the search engine |
+| `snippet` | string | Search-result snippet |
 | `content` | string or null | Extracted main-body text prefixed with `Source: <url>` (null when `--no-fetch`) |
 | `bm25_score` | number | BM25 relevance score (only present when ranking is active) |
+| `engine` | string | Engine that supplied the retained result |
+| `query` | string | Query that supplied the retained result |
+| `engine_rank` | number | Original position within that engine/query response |
+| `sources` | array | Every engine/query occurrence merged into this URL |
 
 ## Notes
 
@@ -83,6 +87,8 @@ Each element in the returned array contains:
 - Progress logs go to **stderr**; clean JSON goes to **stdout**.
   Pipe stdout for programmatic use: `kestrelsearch search "..." --output json 2>/dev/null`
 - PDFs are automatically skipped during content fetching.
+- Page bodies are streamed up to `--max-response-bytes`; network and parsing concurrency are controlled separately.
+- By default, at most three times `--top-k` candidates are fetched before BM25 ranking.
 - BM25 filtering removes results with zero relevance to the query.
 - Use `--no-fetch` for a fast, low-cost keyword search without content extraction.
 """

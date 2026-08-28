@@ -1,0 +1,13 @@
+#!/usr/bin/env zsh
+
+# Run Codex for this repository with traces exported to the local Arize Phoenix
+# OTLP gRPC collector. This preserves the user's normal ~/.codex authentication
+# and configuration; it only layers telemetry settings onto this invocation.
+
+set -euo pipefail
+
+exec codex \
+  -c 'otel.environment="kestrelsearch-benchmark"' \
+  -c 'otel.trace_exporter={ "otlp-grpc" = { endpoint = "http://127.0.0.1:4317" } }' \
+  -c 'otel.span_attributes={ "service.name" = "codex-kestrel-benchmark", "benchmark.project" = "kestrelsearch" }' \
+  "$@"

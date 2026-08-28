@@ -1,0 +1,9 @@
+# Repo-local OpenTelemetry settings for Codex benchmarking.
+#
+# Codex currently loads its main configuration from ~/.codex/config.toml, so use
+# scripts/codex-phoenix to apply this equivalent configuration for this project.
+
+[otel]
+environment = "kestrelsearch-benchmark"
+trace_exporter = { "otlp-grpc" = { endpoint = "http://127.0.0.1:4317" } }
+span_attributes = { "service.name" = "codex-kestrel-benchmark", "benchmark.project" = "kestrelsearch" }

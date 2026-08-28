@@ -1,22 +1,26 @@
-import httpx
 from click.testing import CliRunner
 
 from kestrelsearch import cli
 
 
 def test_search_command_outputs_json_without_fetching(monkeypatch):
-    monkeypatch.setattr(
-        cli,
-        "search",
-        lambda *args, **kwargs: [
+    async def search_many(*args, **kwargs):
+        return [
             {
                 "title": "Result",
                 "url": "https://example.test",
                 "display_url": "example.test",
                 "snippet": "Snippet",
                 "content": None,
+                "engine": "duckduckgo",
+                "query": "query",
             }
-        ],
+        ]
+
+    monkeypatch.setattr(
+        cli,
+        "async_search_many",
+        search_many,
     )
 
     result = CliRunner().invoke(
@@ -45,13 +49,19 @@ def test_search_command_fetches_ranks_and_prints_text(monkeypatch):
             "content": None,
         },
     ]
-    monkeypatch.setattr(cli, "search", lambda *args, **kwargs: results)
+
+    async def search_many(*args, **kwargs):
+        return results
+
+    monkeypatch.setattr(cli, "async_search_many", search_many)
 
     async def fetch_all(*args, **kwargs):
         return ["Page content"]
 
     monkeypatch.setattr(cli, "fetch_all", fetch_all)
-    monkeypatch.setattr(cli, "rank_results", lambda values, query: values[:1])
+    monkeypatch.setattr(
+        cli, "rank_results_by_query", lambda values, queries: values[:1]
+    )
 
     result = CliRunner().invoke(cli.main, ["search", "query"])
 
@@ -62,19 +72,92 @@ def test_search_command_fetches_ranks_and_prints_text(monkeypatch):
 
 def test_search_command_handles_empty_results_and_http_errors(monkeypatch):
     runner = CliRunner()
-    monkeypatch.setattr(cli, "search", lambda *args, **kwargs: [])
+
+    async def empty_results(*args, **kwargs):
+        return []
+
+    monkeypatch.setattr(cli, "async_search_many", empty_results)
     empty = runner.invoke(cli.main, ["search", "query", "--output", "json"])
     assert empty.exit_code == 0
     assert empty.stdout.strip() == "[]"
 
-    def raise_error(*args, **kwargs):
-        request = httpx.Request("GET", "https://example.test")
-        raise httpx.ConnectError("offline", request=request)
+    async def raise_error(*args, **kwargs):
+        raise cli.SearchError("offline")
 
-    monkeypatch.setattr(cli, "search", raise_error)
+    monkeypatch.setattr(cli, "async_search_many", raise_error)
     failed = runner.invoke(cli.main, ["search", "query"])
     assert failed.exit_code == 1
     assert "Search failed" in failed.stderr
+
+
+def test_search_command_passes_multi_engine_fanout_options(monkeypatch):
+    seen = {}
+
+    async def search_many(queries, **kwargs):
+        seen["queries"] = queries
+        seen.update(kwargs)
+        return []
+
+    monkeypatch.setattr(cli, "async_search_many", search_many)
+    result = CliRunner().invoke(
+        cli.main,
+        [
+            "search",
+            "first",
+            "-q",
+            "second",
+            "-e",
+            "bing",
+            "-e",
+            "yahoo",
+            "--mode",
+            "fanout",
+            "--search-concurrency",
+            "2",
+            "--output",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert seen["queries"] == ("first", "second")
+    assert seen["engines"] == ("bing", "yahoo")
+    assert seen["mode"] == "fanout"
+    assert seen["max_concurrency"] == 2
+
+
+def test_search_command_bounds_fetch_candidates(monkeypatch):
+    results = [
+        {
+            "title": f"Result {index}",
+            "url": f"https://example.test/{index}",
+            "display_url": "",
+            "snippet": "snippet",
+            "content": None,
+            "query": "query",
+        }
+        for index in range(10)
+    ]
+    fetched_urls = []
+
+    async def search_many(*args, **kwargs):
+        return results
+
+    async def bounded_fetch(urls, **kwargs):
+        fetched_urls.extend(urls)
+        return ["content"] * len(urls)
+
+    monkeypatch.setattr(cli, "async_search_many", search_many)
+    monkeypatch.setattr(cli, "fetch_all", bounded_fetch)
+    monkeypatch.setattr(cli, "rank_results_by_query", lambda values, queries: values)
+
+    result = CliRunner().invoke(
+        cli.main,
+        ["search", "query", "--top-k", "2", "--output", "json"],
+    )
+
+    assert result.exit_code == 0
+    assert len(fetched_urls) == 6
 
 
 def test_skill_helpers_and_install(monkeypatch, tmp_path):
