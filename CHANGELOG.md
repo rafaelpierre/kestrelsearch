@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.1.0 (2026-08-28)
+
+### Chores
+
+- Add commit-scoped prek hooks
+  ([`df982c4`](https://github.com/rafaelpierre/kestrelsearch/commit/df982c43851cbd9baae592ef81b22010440b21b6))
+
+- Format benchmarks and sync lockfile
+  ([`806cd4d`](https://github.com/rafaelpierre/kestrelsearch/commit/806cd4ddcd03574439ff7e68810e75340cd9ffb2))
+
+### Features
+
+- Add multi-provider async search
+  ([`1abb39a`](https://github.com/rafaelpierre/kestrelsearch/commit/1abb39a464c82da90957771ae0ec8dd08b74d396))
+
+
 ## Unreleased
 
 - Added asynchronous DuckDuckGo, Bing, and Yahoo search providers.

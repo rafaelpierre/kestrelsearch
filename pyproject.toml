@@ -1,6 +1,6 @@
 [project]
 name = "kestrelsearch"
-version = "1.0.1"
+version = "1.1.0"
 description = "Web search, page extraction, and relevance ranking for AI agents"
 readme = "README.md"
 requires-python = ">=3.13"
